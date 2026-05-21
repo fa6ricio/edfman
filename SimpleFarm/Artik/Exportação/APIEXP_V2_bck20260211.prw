@@ -1,0 +1,395 @@
+#Include "Protheus.ch"
+#Include "TOTVS.ch"
+#Include "RESTFUL.CH"
+#Include "FWMVCDef.ch"
+
+/*/{Protheus.doc} APIEECAUTO
+API de Pedido de Exportação (EEC) com Integração Automática Financeiro (SC5)
+@author Bruno A P Mendes
+@since 21/01/2026
+@version 3.0 (Final)
+/*/
+
+WSRESTFUL APIEECAUTO DESCRIPTION "API Exportacao Automatizada"
+	WsMethod POST INCLUIR Description 'Incluir Pedido' WSSYNTAX "/api/v1/eec/auto-orders"
+END WSRESTFUL
+
+WSMETHOD POST INCLUIR WsService APIEECAUTO
+	Local cBody        := self:GetContent()
+	Local oJsonRaw     := JsonObject():New()
+	Local aPedidos     := {}
+	Local aRetBatch    := {}
+	Local aArea        := GetArea()
+	Local nY, jOrder, jRet
+	Local lHasError    := .F.
+
+	// --- SETUP DO AMBIENTE EEC ---
+	// Variáveis Private Obrigatórias para o funcionamento do SIGAEEC
+	Private nModulo    := 29
+	Private cModulo    := "EEC"
+	Private cFilAnt    := cFilAnt
+	Private cEmpAnt    := cEmpAnt
+
+	// Controle de Erro do ExecAuto
+	Private lMsErroAuto    := .F.
+	Private lAutoErrNoFile := .T.
+
+	self:SetContentType("application/json")
+	cBody := DecodeUtf8(cBody)
+
+	If Empty(cBody)
+		SetRestFault(400, 'Body vazio')
+		RestArea(aArea)
+		Return .F.
+	EndIf
+
+	oJsonRaw:FromJson(cBody)
+
+	If ValType(oJsonRaw) == 'U' .Or. !oJsonRaw:HasProperty("data")
+		SetRestFault(400, 'JSON invalido ou sem propriedade data')
+		RestArea(aArea)
+		Return .F.
+	EndIf
+
+	aPedidos := oJsonRaw["data"]
+
+	// Processamento em Lote
+	For nY := 1 To Len(aPedidos)
+		jOrder := aPedidos[nY]
+		jRet   := ProcessaPedido(jOrder)
+
+		If jRet['status'] == 'error'
+			lHasError := .T.
+		EndIf
+
+		aAdd(aRetBatch, jRet)
+	Next nY
+
+	self:SetResponse(FWJsonSerialize(aRetBatch))
+
+	If lHasError
+		self:SetStatus(400)
+	Else
+		self:SetStatus(201)
+	EndIf
+
+	RestArea(aArea)
+Return .T.
+
+/*/{Protheus.doc} ProcessaPedido
+Gerencia troca de filial e orquestra a gravação
+/*/
+Static Function ProcessaPedido(jOrder)
+	Local oResponse    := JsonObject():New()
+	Local cFilialJson  := ""
+	Local cEmpAtual    := cEmpAnt
+	Local cFilAtual    := cFilAnt
+	Local aArea        := GetArea()
+
+	// Valida Troca de Filial Dinâmica
+	If jOrder:HasProperty("filial")
+		cFilialJson := jOrder['filial']
+		If !Empty(cFilialJson) .And. cFilialJson != cFilAtual
+			ConOut(">>> [APIEECAUTO] Trocando Ambiente: " + cFilAtual + " -> " + cFilialJson)
+			RpcSetEnv(cEmpAtual, cFilialJson, NIL, NIL, "EEC")
+
+			// Reafirma variáveis globais após RpcSetEnv (Segurança)
+			nModulo := 29
+			cModulo := "EEC"
+		EndIf
+	EndIf
+
+	// Grava o Pedido
+	oResponse := GravarPedido(jOrder)
+
+	// Restaura filial original para o próximo item
+	If cFilAnt != cFilAtual
+		RpcSetEnv(cEmpAtual, cFilAtual, NIL, NIL, "EEC")
+		RestArea(aArea)
+	EndIf
+
+Return oResponse
+
+/*/{Protheus.doc} GravarPedido
+Busca dados cadastrais, executa inclusão e Atualiza SC5 vinculado
+/*/
+Static Function GravarPedido(jOrder)
+	Local oResponse     := JsonObject():New()
+	Local aCab          := {}
+	Local aItens        := {}
+	Local aItemAux      := {}
+	Local aItensNF      := {}
+	Local aItemNFa      := {}
+	Local aAux          := {}
+	Local aItensJson    := {}
+	Local nX            := 0
+	Local cPedido       := ""
+	Local dDataProc     := dDataBase
+
+	// Variáveis auxiliares
+	Local aDadosImp, aDadosExp, aDadosProd, cNomeImp, cNomeExp, cDescProd, cNcmProd
+	Local cNumPedVenda  := ""
+
+	// Variáveis Private do EEC (Reinicialização a cada pedido)
+	Private aPDocs      := {}
+	Private aPPedidos   := {}
+	Private aPAgentes   := {}
+	Private aPNotifys   := {}
+	Private aPProdutos  := {}
+	Private aCondPag    := {}
+	Private aEmb        := {}
+
+	cPedido := jOrder['pedido']
+
+	// -----------------------------------------------------------
+	// 1. AUTOMATIZAÇÃO: BUSCA DADOS CADASTRAIS (SQL)
+	// -----------------------------------------------------------
+	aDadosImp := GetCadData("SA1", jOrder['importador']['codigo'], jOrder['importador']['loja'], "A1_NOME")
+	cNomeImp  := IIf(!Empty(aDadosImp), aDadosImp[1], "IMPORTADOR NAO ENCONTRADO")
+
+	aDadosExp := GetCadData("SA2", jOrder['exportador']['codigo'], jOrder['exportador']['loja'], "A2_NOME")
+	cNomeExp  := IIf(!Empty(aDadosExp), aDadosExp[1], "EXPORTADOR NAO ENCONTRADO")
+
+	// -----------------------------------------------------------
+	// 2. MONTAGEM DO CABEÇALHO (EE7)
+	// -----------------------------------------------------------
+	If jOrder:HasProperty("dtPedido"); dDataProc := SToD(StrTran(jOrder['dtPedido'], "-", "")); EndIf
+
+		aadd( aCab , {'EE7_PEDIDO' , cPedido                        , NIL} )
+		aadd( aCab , {'EE7_DTPROC' , dDataProc                      , NIL} )
+		aadd( aCab , {'EE7_DTPEDI' , dDataProc                      , NIL} )
+
+		// Parceiros
+		aadd( aCab , {'EE7_IMPORT' , jOrder['importador']['codigo'] , NIL} )
+		aadd( aCab , {'EE7_IMLOJA' , jOrder['importador']['loja']   , NIL} )
+		aadd( aCab , {'EE7_IMPODE' , cNomeImp                       , NIL} ) // Auto
+		aadd( aCab , {'EE7_FORN'   , jOrder['exportador']['codigo'] , NIL} )
+		aadd( aCab , {'EE7_FOLOJA' , jOrder['exportador']['loja']   , NIL} )
+		aadd( aCab , {'EE7_FORNDE' , cNomeExp                       , NIL} ) // Auto
+
+		// Dados Comerciais
+		aadd( aCab , {'EE7_IDIOMA' , jOrder['dadosComerciais']['idioma']         , NIL} )
+		aadd( aCab , {'EE7_CONDPA' , jOrder['dadosComerciais']['condPagamento']  , NIL} )
+		aadd( aCab , {'EE7_MPGEXP' , jOrder['dadosComerciais']['meioPagamento']  , NIL} )
+		aadd( aCab , {'EE7_INCOTE' , jOrder['dadosComerciais']['incoterm']       , NIL} )
+		aadd( aCab , {'EE7_MOEDA'  , jOrder['dadosComerciais']['moeda']          , NIL} )
+		aadd( aCab , {'EE7_VIA'    , jOrder['dadosComerciais']['via']            , NIL} )
+		aadd( aCab , {'EE7_ORIGEM' , jOrder['dadosComerciais']['origem']         , NIL} )
+		aadd( aCab , {'EE7_DEST'   , jOrder['dadosComerciais']['destino']        , NIL} )
+		aadd( aCab , {'EE7_PAISET' , jOrder['dadosComerciais']['paisDestino']    , NIL} )
+		aadd( aCab , {'EE7_TIPTRA' , jOrder['dadosComerciais']['tipoTransporte'] , NIL} )
+		aadd( aCab , {'EE7_FRPPCC' , jOrder['dadosComerciais']['fretePPCC']      , NIL} )
+		aadd( aCab , {'EE7_CALCEM' , jOrder['dadosComerciais']['calculoEmbarque'], NIL} )
+
+		aAdd( aCab , {"ATUEMB"     , "N", Nil} )
+
+		// -----------------------------------------------------------
+		// 3. MONTAGEM DOS ITENS (EE8)
+		// -----------------------------------------------------------
+		aItensJson := jOrder['itens']
+
+
+		For nX := 1 To Len(aItensJson)
+			aItemAux := {}
+
+			// Busca Produto Auto
+			aDadosProd := GetProdData(aItensJson[nX]['produto'])
+			cDescProd  := IIf(!Empty(aDadosProd), aDadosProd[1], "PRODUTO MANUAL")
+			cNcmProd   := IIf(!Empty(aDadosProd), aDadosProd[2], "")
+
+			// Sobrescreve se veio no JSON
+			If aItensJson[nX]:HasProperty("descricao"); cDescProd := aItensJson[nX]['descricao']; EndIf
+				If aItensJson[nX]:HasProperty("ncm");       cNcmProd  := aItensJson[nX]['ncm']; EndIf
+
+					aAdd(aItemAux, {'EE8_SEQUEN', cValToChar(nX)                     , NIL} )
+					aAdd(aItemAux, {'EE8_COD_I' , aItensJson[nX]['produto']          , NIL} )
+					aAdd(aItemAux, {'EE8_VM_DES', cDescProd                          , NIL} )
+					aAdd(aItemAux, {'EE8_FORN'  , jOrder['exportador']['codigo']     , NIL} )
+					aAdd(aItemAux, {'EE8_FOLOJA', jOrder['exportador']['loja']       , NIL} )
+
+					If aItensJson[nX]:HasProperty("fabricante")
+						aAdd(aItemAux, {'EE8_FABR'  , aItensJson[nX]['fabricante']       , NIL} )
+						aAdd(aItemAux, {'EE8_FALOJA', aItensJson[nX]['lojaFabricante']   , NIL} )
+					EndIf
+
+					aAdd(aItemAux, {'EE8_SLDINI', aItensJson[nX]['saldoInicial']     , NIL} )
+					aAdd(aItemAux, {'EE8_EMBAL1', aItensJson[nX]['embalagem']        , NIL} )
+					aAdd(aItemAux, {'EE8_QE'    , aItensJson[nX]['qtdExportar']      , NIL} )
+					aAdd(aItemAux, {'EE8_QTDEM1', aItensJson[nX]['qtdEmbalagem']     , NIL} )
+					aAdd(aItemAux, {'EE8_PRECO ', aItensJson[nX]['preco']            , NIL} )
+					aAdd(aItemAux, {'EE8_PSLQUN', aItensJson[nX]['pesoLiqUnit']      , NIL} )
+					aAdd(aItemAux, {'EE8_POSIPI', cNcmProd                           , NIL} )
+					aAdd(aItemAux, {'EE8_TES'   , aItensJson[nX]['tes']              , NIL} )
+					aAdd(aItemAux, {'EE8_CF'    , aItensJson[nX]['cfop']             , NIL} )
+					aAdd(aItemAux, {"AUTDELETA" , "N"                                , Nil} )
+
+					AADD( aItens, aItemAux )
+				Next nX
+
+				/*aNFLote    := jOrder['nflotes']
+
+				For nX := 1 To Len(aNFLote)
+					aAdd(aItemNFa, {aItensJson[nX]['nf']   } )
+					aAdd(aItemNFa, {aItensJson[nX]['serie']} )
+					aAdd(aItemNFa, {aItensJson[nX]['chave']} )
+					aAdd(aItemNFa, {aItensJson[nX]['item'] } )
+					aAdd(aItemNFa, { cValToChar(aItensJson[nX]['quantidade'])} )
+					aAdd(aItemNFa, {aItensJson[nX]['tipo'] } )
+					aAdd(aItemNFa, {aItensJson[nX]['itemexport'] } )
+					   
+
+					AADD( aItensNF, aItemNFa )
+					aItemNFa:={}
+				Next*/
+
+				// -----------------------------------------------------------
+				// 4. EXECUÇÃO DA ROTINA AUTOMÁTICA
+				// -----------------------------------------------------------
+				lMsErroAuto := .F.
+				MSExecAuto( {|X,Y,Z,W| EECAP100(X,Y,Z,W)}, aCab, aItens, 3, aAux )
+
+				If lMsErroAuto
+					oResponse['status']  := "error"
+					oResponse['message'] := FWJsonSerialize(GetAutoGRLog())
+					oResponse['pedido']  := cPedido
+				Else
+
+
+					// -----------------------------------------------------------------
+					// 5. Gravacao das notas fiscal de formacao de lote
+					// -----------------------------------------------------------------
+					/*
+					dbSelectArea('ZX1')
+					ZX1->(dbSetOrder(1))
+					For nX:=1 to Len(aItensNF)
+						RecLock("ZX1",.T.)
+						ZX1->ZX1_FILIAL     :=xFilial('ZX1')
+						ZX1->ZX1_EXPORT     :=cPedido
+						ZX1->ZX1_NOTA       :=aItensNF[1]
+						ZX1->ZX1_SERIE      :=aItensNF[2]
+						ZX1->ZX1_CHAVE      :=aItensNF[3]
+						ZX1->ZX1_ITEM       :=aItensNF[4]
+						ZX1->ZX1_QUANTI     :=aItensNF[5]
+						ZX1->ZX1_TIPO       :=Upper(aItensNF[6])
+						ZX1->ZX1_ITEMEX		:=Upper(aItensNF[7])
+						msUnLock()
+					Next*/
+
+
+					// -----------------------------------------------------------------
+					// 5. ATUALIZAÇÃO CRUZADA: BUSCA LINK EE7 -> SC5
+					// -----------------------------------------------------------------
+
+
+					DbSelectArea("EE7")
+					EE7->(DbSetOrder(1)) // EE7_FILIAL + EE7_PEDIDO
+
+					If EE7->(MsSeek(xFilial("EE7") + cPedido))
+
+						// Pega o número do Pedido de Venda Gerado
+						cNumPedVenda := EE7->EE7_PEDFAT
+
+						If !Empty(cNumPedVenda)
+
+							DbSelectArea("SC5")
+							SC5->(DbSetOrder(1)) // C5_FILIAL + C5_NUM
+
+							If SC5->(MsSeek(xFilial("SC5") + cNumPedVenda))
+
+								If RecLock("SC5", .F.)
+
+									// Atualiza Pesos e Volumes no Pedido de Venda
+									If jOrder:HasProperty("pesoBrutoTotal")
+										SC5->C5_PBRUTO := jOrder['pesoBrutoTotal']
+									EndIf
+
+									If jOrder:HasProperty("pesoLiquidoTotal")
+										SC5->C5_PESOL := jOrder['pesoLiquidoTotal']
+									EndIf
+
+									If jOrder:HasProperty("volumesQuantidade")
+										SC5->C5_VOLUME1 := jOrder['volumesQuantidade']
+
+										// Tratamento para campo específico de volumes (se existir)
+										If SC5->(FieldPos("C5_QTVOL")) > 0
+											SC5->C5_QTVOL := jOrder['volumesQuantidade']
+										EndIf
+									EndIf
+
+									If jOrder:HasProperty("volumesEspecie")
+										// Compatibilidade de versões
+										If SC5->(FieldPos("C5_ESPECI1")) > 0
+											SC5->C5_ESPECI1 := SubStr(jOrder['volumesEspecie'], 1, 10)
+										ElseIf SC5->(FieldPos("C5_ESPECIE")) > 0
+											SC5->C5_ESPECIE := SubStr(jOrder['volumesEspecie'], 1, 10)
+										EndIf
+									EndIf
+
+									SC5->(MsUnlock())
+									ConOut(">>> [APIEECAUTO] Pedido Venda " + cNumPedVenda + " atualizado via EE7_PEDFAT")
+								EndIf
+
+								oResponse['info'] := "Export: " + cPedido + " -> Venda: " + cNumPedVenda
+							Else
+								oResponse['info'] := "Export: " + cPedido + " (SC5 " + cNumPedVenda + " nao encontrado)"
+							EndIf
+						Else
+							oResponse['info'] := "Export: " + cPedido + " (Campo EE7_PEDFAT vazio)"
+						EndIf
+
+					EndIf
+
+					oResponse['status']  := "success"
+					oResponse['pedido']  := cPedido
+				EndIf
+
+				Return oResponse
+
+// -----------------------------------------------------------
+// HELPER FUNCTIONS (SQL DIRETO)
+// -----------------------------------------------------------
+
+/*/{Protheus.doc} GetCadData
+Busca nome do parceiro corrigindo prefixo SA1/SA2
+/*/
+Static Function GetCadData(cAlias, cCod, cLoja, cCampoNome)
+	Local aRet      := {}
+	Local cQuery    := ""
+	Local cAliasQry := GetNextAlias()
+	Local cPrefix   := ""
+
+	If cAlias == "SA1"; cPrefix := "A1"
+	ElseIf cAlias == "SA2"; cPrefix := "A2"
+	Else; cPrefix := SubStr(cAlias, 2, 2); EndIf
+
+		cQuery := "SELECT " + cCampoNome + " FROM " + RetSqlName(cAlias) + " "
+		cQuery += "WHERE " + cPrefix + "_COD = '" + cCod + "' AND " + cPrefix + "_LOJA = '" + cLoja + "' "
+		cQuery += "AND D_E_L_E_T_ = ' ' "
+
+		DbUseArea(.T., "TOPCONN", TCGenQry(,, cQuery), cAliasQry, .F., .T.)
+
+		If !(cAliasQry)->(EoF())
+			aAdd(aRet, AllTrim((cAliasQry)->&(cCampoNome)))
+		EndIf
+		(cAliasQry)->(DbCloseArea())
+		Return aRet
+
+/*/{Protheus.doc} GetProdData
+Busca Produto no SB1
+/*/
+Static Function GetProdData(cProd)
+	Local aRet      := {}
+	Local cQuery    := ""
+	Local cAliasQry := GetNextAlias()
+
+	cQuery := "SELECT B1_DESC, B1_POSIPI FROM " + RetSqlName("SB1") + " "
+	cQuery += "WHERE B1_COD = '" + cProd + "' AND D_E_L_E_T_ = ' ' "
+
+	DbUseArea(.T., "TOPCONN", TCGenQry(,, cQuery), cAliasQry, .F., .T.)
+
+	If !(cAliasQry)->(EoF())
+		aAdd(aRet, AllTrim((cAliasQry)->B1_DESC))
+		aAdd(aRet, AllTrim((cAliasQry)->B1_POSIPI))
+	EndIf
+	(cAliasQry)->(DbCloseArea())
+Return aRet
