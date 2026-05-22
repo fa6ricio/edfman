@@ -1,0 +1,336 @@
+{
+  "info": {
+    "_postman_id": "a4f76c7d-8caf-40e5-901c-7bf81e6a02f2",
+    "name": "EDFMAN",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "48977050",
+    "_collection_link": "https://go.postman.co/collection/48977050-a4f76c7d-8caf-40e5-901c-7bf81e6a02f2?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "TITULO",
+      "item": [
+        {
+          "name": "POST - ContasPagar",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "password",
+                  "value": "***Deazz5342",
+                  "type": "string"
+                },
+                {
+                  "key": "username",
+                  "value": "asilva-totvs",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"INCLUI_PAGAR\": [\r\n    {\r\n      \"FILIAL\": \"01\",\r\n      \"PREFIXO\": \"BOL\",\r\n      \"NUMERO\": \"000000001\",\r\n      \"PARCELA\": \"1\",\r\n      \"TIPO\": \"NF\",\r\n      \"FORNECEDOR\": \"000025\",\r\n      \"LOJA\": \"01\",\r\n      \"EMISSAO\": \"20260521\",\r\n      \"VENCIMENTO\": \"20260621\",\r\n      \"VALOR\": 1500.50,\r\n      \"FORMAPAGAMENTO\": \"01\",\r\n      \"MOEDA\": 1,\r\n      \"TX_MOEDA\": 0,\r\n      \"HISTORICO\": \"INCLUSAO VIA REST POSTMAN\",\r\n      \"BANCO\": \"\",\r\n      \"AGENCIA\": \"\",\r\n      \"DIGITOAGENCIA\": \"\",\r\n      \"CONTA\": \"\",\r\n      \"DIGITOCONTA\": \"\"\r\n    }\r\n  ]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://ed122776.protheus.cloudtotvs.com.br:4050/rest/edf/v1/ContasPagar/IncluiPagar",
+              "protocol": "https",
+              "host": [
+                "ed122776",
+                "protheus",
+                "cloudtotvs",
+                "com",
+                "br"
+              ],
+              "port": "4050",
+              "path": [
+                "rest",
+                "edf",
+                "v1",
+                "ContasPagar",
+                "IncluiPagar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET - ContasPagar",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE - ContasPagar",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        },
+        {
+          "name": "PUT - ContasPagar",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "CLIENTE",
+      "item": [
+        {
+          "name": "zRetornoCli",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "password",
+                  "value": "***Deazz5342",
+                  "type": "string"
+                },
+                {
+                  "key": "username",
+                  "value": "asilva-totvs",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"xdtint\": \"20251022\",\r\n    \"xsinte\": \"N\",\r\n    \"xobs\": \"OK\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://ed122776.protheus.cloudtotvs.com.br:4050/rest/zRetornoCli/update?id=C000005",
+              "protocol": "https",
+              "host": [
+                "ed122776",
+                "protheus",
+                "cloudtotvs",
+                "com",
+                "br"
+              ],
+              "port": "4050",
+              "path": [
+                "rest",
+                "zRetornoCli",
+                "update"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "C000005"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "CONTRATOS",
+      "item": [
+        {
+          "name": "POST - Incluir Contrato",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "password",
+                  "value": "***Deazz5342",
+                  "type": "string"
+                },
+                {
+                  "key": "username",
+                  "value": "asilva-totvs",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"CONTRATOS\": [\n    {\n      \"FILIAL_TITULO\": \"0101\",\n      \"CODIGO\": \"EDF2026/01\",\n      \"FORNECEDOR\": \"F000020\",\n      \"DATAINICIO\": \"20260105\",\n      \"DATAFIM\": \"20270105\",\n      \"CONDPAGAMENTO\": \"90/10\",\n      \"MOEDA\": \"1\",\n      \"MOEDAPAGAMENTO\": \"1\",\n      \"PRODUTO\": \"ALGODAO\",\n      \"QUANTIDADE\": \"100.25\",\n      \"UM\": \"KG\",\n      \"VALORUNITARIO\": \"5.30\",\n      \"VALORTOTAL\": \"5302.50\",\n      \"COTACAOFIXA\": \"0\",\n      \"TIPOCONTRATO\": \"FIXO\",\n      \"PARCEIROS\": [\n        { \"CODPAR\": \"F000014\" },\n        { \"CODPAR\": \"F000015\" },\n        { \"CODPAR\": \"F000016\" }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://ed122776.protheus.cloudtotvs.com.br:4050/rest/edf/v1/ContratosAlg/IncluirContrato",
+              "protocol": "https",
+              "host": [
+                "ed122776",
+                "protheus",
+                "cloudtotvs",
+                "com",
+                "br"
+              ],
+              "port": "4050",
+              "path": [
+                "rest",
+                "edf",
+                "v1",
+                "ContratosAlg",
+                "IncluirContrato"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT - Alterar Contrato",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "password",
+                  "value": "***Deazz5342",
+                  "type": "string"
+                },
+                {
+                  "key": "username",
+                  "value": "asilva-totvs",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"CONTRATOS\": [\n    {\n      \"VALORTOTAL\": \"5500.00\",\n      \"QUANTIDADE\": \"110.00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://ed122776.protheus.cloudtotvs.com.br:4050/rest/edf/v1/ContratosAlg/AlterarContrato?id=EDF2026/01",
+              "protocol": "https",
+              "host": [
+                "ed122776",
+                "protheus",
+                "cloudtotvs",
+                "com",
+                "br"
+              ],
+              "port": "4050",
+              "path": [
+                "rest",
+                "edf",
+                "v1",
+                "ContratosAlg",
+                "AlterarContrato"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "EDF2026/01"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE - Excluir Contrato",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "password",
+                  "value": "***Deazz5342",
+                  "type": "string"
+                },
+                {
+                  "key": "username",
+                  "value": "asilva-totvs",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "https://ed122776.protheus.cloudtotvs.com.br:4050/rest/edf/v1/ContratosAlg/ExcluirContrato?id=EDF2026/01",
+              "protocol": "https",
+              "host": [
+                "ed122776",
+                "protheus",
+                "cloudtotvs",
+                "com",
+                "br"
+              ],
+              "port": "4050",
+              "path": [
+                "rest",
+                "edf",
+                "v1",
+                "ContratosAlg",
+                "ExcluirContrato"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "EDF2026/01"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
