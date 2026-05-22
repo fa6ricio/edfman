@@ -1,234 +1,440 @@
 #INCLUDE 'PROTHEUS.CH'
-#Include 'FWMVCDEF.ch'
-#Include 'RestFul.ch'
-#Include "TOTVS.CH"
-#Include "TOPCONN.CH"
-#INCLUDE "TBICONN.CH"   
-#INCLUDE 'RWMAKE.CH'
-#INCLUDE "TBICODE.CH"
+#INCLUDE 'FWMVCDEF.CH'
+#INCLUDE 'RESTFUL.CH'
+#INCLUDE "TOTVS.CH"
+#INCLUDE "TOPCONN.CH"
 
-/*/{Protheus.doc} WSRIncluiPagar
+/*/{Protheus.doc} ContratosAlg
+Serviço REST para Gestão de Contratos do Algodão (Tabela ZX3).
 
-Serviço REST responsável por incluir os dados do título a pagar / fornecedor.
+@author Alex da Silva
+@since  22/05/2026
+/*/
 
-@author	Jose Eustaquio Ladeira Jr
-@since 	25/06/2021
+WSRESTFUL ContratosAlg DESCRIPTION "Serviço REST dos Contratos do Algodao"
+    
+    WSDATA id AS STRING 
 
-/*/ 
+    WSMETHOD POST IncluirContrato ;
+        DESCRIPTION "Incluir Contrato do Algodao" ;
+        WSSYNTAX "/edf/v1/ContratosAlg/IncluirContrato" ;
+        PATH "/edf/v1/ContratosAlg/IncluirContrato" ;
+        PRODUCES APPLICATION_JSON
 
-WSRESTFUL ContratoAlgodao DESCRIPTION "Serviço REST Contratos Algodao"
-	
-
-    WSMETHOD POST IncluiPagar DESCRIPTION "Incluir Contrato Algodao" ;
-    WSSYNTAX "/edf/v1/ContratoAlgodao/IncluirContrato" ;
-    PATH "/edf/v1//ContratoAlgodao/IncluirContrato";
-	PRODUCES APPLICATION_JSON
-
-    WSMETHOD PUT AlterarTituo ; 
-    DESCRIPTION "Alterar Contrato Algodao" ;
-    WSSYNTAX "/edf/v1//ContratoAlgodao/AlterarContrato/{ID}" ;
-    PATH "/edf/v1//ContratoAlgodao/AlterarContrato";
-	PRODUCES APPLICATION_JSON
+    WSMETHOD PUT AlterarContrato ; 
+        DESCRIPTION "Alterar Contrato do Algodao" ;
+        WSSYNTAX "/edf/v1/ContratosAlg/AlterarContrato" ;
+        PATH "/edf/v1/ContratosAlg/AlterarContrato" ;
+        PRODUCES APPLICATION_JSON
 
     WSMETHOD DELETE ExcluirContrato ; 
-    DESCRIPTION "Excluir Contrato Algodao" ;
-    WSSYNTAX "/edf/v1//ContratoAlgodao/ExcluirContrato/{ID}" ;
-    PATH "/edf/v1//ContratoAlgodao/ExcluirContrato";
-	PRODUCES APPLICATION_JSON
-
-    
+        DESCRIPTION "Excluir Contrato do Algodao" ;
+        WSSYNTAX "/edf/v1/ContratosAlg/ExcluirContrato" ;
+        PATH "/edf/v1/ContratosAlg/ExcluirContrato" ;
+        PRODUCES APPLICATION_JSON
 
 END WSRESTFUL
 
+// =========================================================================
+// INCLUSÃO (POST)
+// =========================================================================
+WSMETHOD POST IncluirContrato WSSERVICE ContratosAlg            
+    Local lRet       := .T.
+    Local cJson      := Self:GetContent()
+    Local cError     := ""
+    Local oJsonReq   := JsonObject():New()
+    Local oJsonRet   := JsonObject():New()
+    Local aRetMov    := {}
+        
+    FWLogMsg("INFO",, "ContratosAlg", "IncluirContrato", "", "01", "Inicio da Inclusao")  
+    Self:SetContentType('application/json')
 
-/*
-	Metodo para retornar o token de autenticacao.
-*/
-WSMETHOD POST IncluirContrato WSSERVICE ContratoAlgodao				
-	Local oAuthToken	:= AuthWebService():New()		
-	Local oResponse		:= Nil
-	Local aRetMov		:= {}
-	Local cBody			:= Self:GetContent()
-	Local cUserAuth		:= ""
-	Local cRetJSON		:= ""
-	Local cMsg			:= ""
-	Local lTokenOK		:= .F.	
-	Local lRet 		 	:= .F.
-		
-//	ConOut("Inicio WS Rest Inclui a Pagar")
-	cMsg := "Inicio WS Rest Inclui a Pagar"
-	FWLogMsg("INFO",, "POST", , , , cMsg, , ,)	
-
-	// Define o tipo de retorno do metodo.
-	::SetContentType("application/json")
-
-	// Pega o usuario passsado no header para autenticacao
-	cUserAuth := ::GetHeader("userAuth")
-
-	// Valida o Token passado no aHeaders
-	lTokenOK := oAuthToken:CheckToken(cUserAuth)
-
-	If	lTokenOK
-
-		If	FWJsonDeserialize(cBody,@oResponse)
-		
-			aRetMov 	:= gravaDados(oResponse)
-			lRet 		:= aRetMov[01]
-			cRetJSON	:= aRetMov[02]
-
-		Else
-			cRetJSON	:= "Ocorreu um erro no processamento do JSON"
-		EndIf
-		
-	Else
-		cRetJSON := oAuthToken:getLog()
-	EndIf		
-		
-	If	lRet
-		Self:SetResponse( cRetJSON )		
-//		ConOut("200 - "+cRetJSON)
-		cMsg := "200 - "+cRetJSON
-		FWLogMsg("INFO",, "POST", , , , cMsg, , ,)	
-	Else		
-		SetRestFault( 400, cRetJSON )
-//		ConOut("400 - "+cRetJSON)
-		cMsg := "400 - "+cRetJSON
-		FWLogMsg("INFO",, "POST", , , , cMsg, , ,)	
-	EndIf
-	
-Return(lRet)
-
-
-/*
-	Funcao reponsável por gravar os dados da inclusão do a pagar
-*/
-Static Function gravaDados(oResponse)	
-	Local oValid	:= Nil	
-	Local nRecord	:= 0
-	Local cRetJSON	:= ""
-	Local cItemJSON	:= ""
-	Local cStatus	:= ""	
-
-	Local cCodFil	:= ""
-	Local cPrefix	:= ""
-	Local cNumero	:= ""
-	Local cParcel	:= ""
-	Local cTipTit	:= ""
-	Local cIDTit	:= ""
-	Local cOper		:= ""
-    Local aVetSE2   := {}
-	Local cMensagem	:= ""
-	Local cMsgError	:= ""
-	Local lRet		:= .T.	
+    cError := oJsonReq:FromJson(cJson)
     
-    Private lMsErroAuto := .F.
-
-	If	Len(oResponse:DADOS) > 0
-		
-		cRetJSON += '{'
-		cRetJSON += '	"RETORNO_INCLUSAO": [
-
-		For nRecord := 1 To Len(oResponse:DADOS)
-
-			// Pega os dados para retorno do JSON
-			cCodFil	:= AvKey(IIf(AttIsMemberOf(oResponse:DADOS[nRecord],"FILIAL_TITULO"),oResponse:DADOS[nRecord]:FILIAL_TITULO,""),"E2_FILIAL")
-			cPrefix	:= AvKey(IIf(AttIsMemberOf(oResponse:DADOS[nRecord],"PREFIXO_TITULO"),oResponse:DADOS[nRecord]:PREFIXO_TITULO,""),"E2_PREFIXO")
-			cNumero	:= AvKey(IIf(AttIsMemberOf(oResponse:DADOS[nRecord],"NUMERO_TITULO"),oResponse:DADOS[nRecord]:NUMERO_TITULO,""),"E2_NUM")
-			cParcel	:= AvKey(IIf(AttIsMemberOf(oResponse:DADOS[nRecord],"PARCELA_TITULO"),oResponse:DADOS[nRecord]:PARCELA_TITULO,""),"E2_PARCELA")
-			cTipTit	:= AvKey(IIf(AttIsMemberOf(oResponse:DADOS[nRecord],"TIPO_TITULO"),oResponse:DADOS[nRecord]:TIPO_TITULO,""),"E2_TIPO")
-			cIDTit	:= AvKey(IIf(AttIsMemberOf(oResponse:DADOS[nRecord],"ID_TITULO"),oResponse:DADOS[nRecord]:ID_TITULO,""),"E2_XIDSP")
-			cOper	:= AvKey(IIf(AttIsMemberOf(oResponse:DADOS[nRecord],"OPERACAO"),oResponse:DADOS[nRecord]:OPERACAO,"I"),"E2_XOPSP")
-
-			If	!Empty(cCodFil)
-
-				cMsgError	:= ""
-	
-					
-						ZX3_FILIAL      := oResponse:DADOS[nRecord]:FILIAL_TITULO
-						ZX3_CODIGO      := oResponse:DADOS[nRecord]:CODIGO
-						ZX3_FORNEC      := oResponse:DADOS[nRecord]:FORNECEDOR
-						ZX3_LOJA        := oResponse:DADOS[nRecord]:LOJA
-						ZX3_DATA        := oResponse:DADOS[nRecord]:DATAINICIO
-						ZX3_VIGENC      := oResponse:DADOS[nRecord]:DATAFIM
-						ZX3_CONDPG      := oResponse:DADOS[nRecord]:CONDPAGAMENTO
-						ZX3_MOEDA       := oResponse:DADOS[nRecord]:MOEDA
-						ZX3_MOEPG       := oResponse:DADOS[nRecord]:MOEDAPAGAMENTO
-						ZX3_PROUTO      := oResponse:DADOS[nRecord]:PRODUTO
-						ZX3_QUANTI      := oResponse:DADOS[nRecord]:QUANTIDADE
-						ZX3_UM          := oResponse:DADOS[nRecord]:UM
-						ZX3_VALOR       := oResponse:DADOS[nRecord]:VALORUNITARIO
-						ZX3_VLRTOT      := oResponse:DADOS[nRecord]:VALORTOTAL
-						ZX3_COTAFI      := oResponse:DADOS[nRecord]:COTACAOFIXA
-						ZX3_TIPOCO      := oResponse:DADOS[nRecord]:'1'
-					
-										
-					//valor em dolar    //ptax     //	
-
-					//problema compesar PA para cessionários   //Compensação Contas a Pagar (FINA340)
-					// Caso nao possuir erro, inclui o título na tabela temporaria.
-					If	Empty(cMsgError)
-
-						Begin Transaction
-							    lMsErroAuto := .F.
-                                MSExecAuto({|x,y| FINA050(x,y)}, aVetSE2, 3)
-                                
-                                //Se houve erro, mostra o erro ao usuário e desarma a transação
-                                If lMsErroAuto
-                                    MostraErro()
-                                    DisarmTransaction()
-                                EndIf
-						End Transaction
-																		
-						cStatus		:= "200"
-						cMensagem	:= "Titulo a Pagar Incluido com Sucesso!!!"
-
-					Else
-						cStatus 	:= "400"
-						cMensagem	:= SubStr(cMsgError,1,Len(cMsgError)-2)
-					EndIf
-														
-
-			Else
-				cStatus 	:= "400"
-				cMensagem	:= "Não foi informado em qual filial será feita a inclusão do título a pagar"
-			EndIf
-					
-			// Gera o Arquivo de Retorno JSON
-			cItemJSON += '{'
-			cItemJSON += '	"STATUS_CODE": "'+cStatus+'"	,'
-			cItemJSON += '	"FILIAL_TITULO": "'+cCodFil+'"	,'
-			cItemJSON += '	"PREFIXO_TITULO": "'+cPrefix+'"	,'
-			cItemJSON += '	"NUMERO_TITULO": "'+cNumero+'"	,'
-			cItemJSON += '	"PARCELA_TITULO": "'+cParcel+'"	,'
-			cItemJSON += '	"TIPO_TITULO": "'+cTipTit+'"	,'
-			cItemJSON += '	"ID_TITULO": "'+cIDTit+'"	,'
-			cItemJSON += '	"OPERACAO": "'+cOper+'"	,'
-			cItemJSON += '	"MENSAGEM": "'+cMensagem+'"	'	
-			cItemJSON += '},'
-			
-			reiniciaObjeto(@oValid)
-
-		Next nRecord
-
-		cRetJSON += SubStr(cItemJSON,1,Len(cItemJSON)-1)
-		cRetJSON += ' 	]'
-		cRetJSON += '}' 
-
-	Else
-		lRet 		:= .F.
-		cRetJSON	:= "Nao existem itens a serem processados"
-	EndIf
-
-Return({lRet,cRetJSON})
-
+    If !Empty(cError)
+        Self:setStatus(400)
+        Self:SetResponse('{"STATUS_CODE":"400" , "MENSAGEM":"Parser Json Error. Verifique a estrutura."}')
+        lRet := .F.
+    Else
+        aRetMov := gravaDados(oJsonReq)
+        lRet    := aRetMov[1]
+        
+        If lRet
+            Self:SetResponse(EncodeUTF8(aRetMov[2]))
+        Else
+            Self:setStatus(400)
+            Self:SetResponse(EncodeUTF8(aRetMov[2]))
+        EndIf
+    EndIf
+    
+    FreeObj(oJsonReq)
+    FreeObj(oJsonRet)
+Return lRet
 
 /*
-	Funcao para reiniciar objetos
+    Função de Gravação na ZX3/ZX6 utilizando RecLock e Validação Relacional
 */
-Static Function reiniciaObjeto(oObjeto)
-	
-	FreeObj(oObjeto)	
-	oObjeto := Nil		
-	
-Return()
+Static Function gravaDados(oJsonReq)   
+    Local nRecord   := 0
+    Local nParc     := 0
+    Local oJsonRet  := JsonObject():New()
+    Local aRetIncs  := {}
+    Local oItemRet  
+    Local oItemReq
+    Local oParceiro  
+    Local cMsgError := ""
+    Local lRet      := .T.  
 
+    // Verifica se a tag principal existe e é um array
+    If oJsonReq['CONTRATOS'] != Nil .And. ValType(oJsonReq['CONTRATOS']) == "A"
+        
+        DbSelectArea("ZX3")
+        ZX3->(DbSetOrder(1))
+
+        For nRecord := 1 To Len(oJsonReq:GetJsonObject("CONTRATOS"))
+            cMsgError := ""
+            oItemRet  := JsonObject():New()
+            oItemReq  := oJsonReq:GetJsonObject("CONTRATOS")[nRecord]
+            
+            // Validação de chaves primárias
+            If oItemReq['FILIAL_TITULO'] == Nil .Or. Empty(oItemReq['FILIAL_TITULO']) .Or. ;
+               oItemReq['CODIGO'] == Nil .Or. Empty(oItemReq['CODIGO'])
+                cMsgError := "As chaves FILIAL_TITULO e CODIGO sao obrigatorias."
+            Else
+                // Verifica se o contrato já existe para não duplicar
+                If ZX3->(DbSeek(PadR(oItemReq['FILIAL_TITULO'], TamSx3("ZX3_FILIAL")[1]) + PadR(oItemReq['CODIGO'], TamSx3("ZX3_CODIGO")[1])))
+                    cMsgError := "Contrato ja cadastrado na base de dados."
+                Else
+                    Begin Transaction
+                        
+                        RecLock("ZX3", .T.) 
+                        
+                        // Chaves Principais
+                        ZX3->ZX3_FILIAL := PadR(upper(oItemReq['FILIAL_TITULO']), TamSx3("ZX3_FILIAL")[1])
+                        ZX3->ZX3_CODIGO := PadR(upper(oItemReq['CODIGO'])       , TamSx3("ZX3_CODIGO")[1])
+                        
+                        // Tratamento do Fornecedor posicionando na SA2
+                        If oItemReq['FORNECEDOR'] != nil
+                            DbSelectArea("SA2")
+                            SA2->(DbSetOrder(12))   
+                            If SA2->(DbSeek(xFilial("SA2") + oItemReq['FORNECEDOR']))
+                                ZX3->ZX3_FORNEC := SA2->A2_COD
+                                ZX3->ZX3_LOJA   := SA2->A2_LOJA
+								ZX3->ZX3_NOMFOR	:= SA2->A2_NOME
+                            EndIf
+                        EndIf
+
+                        iif(oItemReq['DATAINICIO']     != nil, ZX3->ZX3_DATA   := sToD(oItemReq['DATAINICIO'])            , nil)
+                        iif(oItemReq['DATAFIM']        != nil, ZX3->ZX3_VIGENC := sToD(oItemReq['DATAFIM'])               , nil)
+                        iif(oItemReq['CONDPAGAMENTO']  != nil, ZX3->ZX3_CONDPG := upper(oItemReq['CONDPAGAMENTO'])        , nil)
+                        iif(oItemReq['MOEDA']          != nil, ZX3->ZX3_MOEDA  := upper(oItemReq['MOEDA'])                , nil)
+                        iif(oItemReq['MOEDAPAGAMENTO'] != nil, ZX3->ZX3_MOEPG  := upper(oItemReq['MOEDAPAGAMENTO'])       , nil)
+
+						// Tratamento do Fornecedor posicionando na SB1
+                        If oItemReq['PRODUTO'] != nil
+                            DbSelectArea("SB1")
+                            SB1->(DbSetOrder(1))   
+                            If SB1->(DbSeek(xFilial("SB1") + oItemReq['PRODUTO']))
+                                ZX3->ZX3_PROUTO 	:= SB1->B1_COD
+                                ZX3->ZX3_PRODES   	:= SB1->B1_DESC
+                            EndIf
+                        EndIf
+
+                        iif(oItemReq['UM']             != nil, ZX3->ZX3_UM     := upper(oItemReq['UM'])                   , nil)
+                        iif(oItemReq['TIPOCONTRATO']   != nil, ZX3->ZX3_TIPOCO := upper(oItemReq['TIPOCONTRATO'])         , nil)
+                        iif(oItemReq['QUANTIDADE']     != nil, ZX3->ZX3_QUANTI := val(cValToChar(oItemReq['QUANTIDADE'])) , nil)
+                        iif(oItemReq['VALORUNITARIO']  != nil, ZX3->ZX3_VALOR  := val(cValToChar(oItemReq['VALORUNITARIO'])), nil)
+                        iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_VLRTOT := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
+                        iif(oItemReq['COTACAOFIXA']    != nil, ZX3->ZX3_COTAFI := val(cValToChar(oItemReq['COTACAOFIXA'])), nil)
+
+                        ZX3->(MsUnlock())
+                        
+                        // Gravação da Tabela Filha (Parceiros - ZX6)
+                        If oItemReq['PARCEIROS'] != Nil .And. ValType(oItemReq['PARCEIROS']) == "A"
+                            For nParc := 1 To Len(oItemReq:GetJsonObject("PARCEIROS"))
+                                oParceiro := oItemReq:GetJsonObject("PARCEIROS")[nParc]
+                                
+                                If oParceiro['CODPAR'] != Nil
+                                    RecLock("ZX6", .T.)
+                                    
+                                    // Chaves de Ligação Relacional com o Cabecalho
+                                    ZX6->ZX6_FILIAL := PadR(upper(oItemReq['FILIAL_TITULO']), TamSx3("ZX6_FILIAL")[1])
+                                    ZX6->ZX6_CODIGO := PadR(upper(oItemReq['CODIGO'])       , TamSx3("ZX6_CODIGO")[1])
+                                    ZX6->ZX6_ITEM   := StrZero(nParc, TamSx3("ZX6_ITEM")[1])
+                                    
+                                    // Valida o Parceiro na SA2
+                                    DbSelectArea("SA2")
+                                    SA2->(DbSetOrder(12)) 
+                                    If SA2->(DbSeek(xFilial("SA2") + oParceiro['CODPAR']))
+                                        ZX6->ZX6_FORNEC := SA2->A2_COD
+                                        ZX6->ZX6_LOJA   := SA2->A2_LOJA
+                                        ZX6->ZX6_NOMFOR := SA2->A2_NOME
+                                    Else
+                                        // Tratamento paliativo caso o fornecedor nao exista (Grava truncado)
+                                        ZX6->ZX6_FORNEC := PadR(oParceiro['CODPAR'], TamSx3("ZX6_FORNEC")[1])
+                                    EndIf
+                                    
+                                    ZX6->(MsUnlock())
+                                EndIf
+                            Next nParc
+                        EndIf
+
+                    End Transaction
+                EndIf
+            EndIf
+            
+            // Monta o retorno isolado do item
+            If Empty(cMsgError)
+                oItemRet['STATUS_CODE'] := "200"
+                oItemRet['MENSAGEM']    := "Contrato e Parceiros incluidos com sucesso."
+            Else
+                oItemRet['STATUS_CODE'] := "400"
+                oItemRet['MENSAGEM']    := cMsgError
+                lRet := .F.
+            EndIf
+            
+            oItemRet['FILIAL_TITULO'] := IIf(oItemReq['FILIAL_TITULO'] != Nil, oItemReq['FILIAL_TITULO'] , "")
+            oItemRet['CODIGO']        := IIf(oItemReq['CODIGO']        != Nil, oItemReq['CODIGO']        , "")
+            
+            AAdd(aRetIncs, oItemRet)
+        Next nRecord
+
+        oJsonRet['RETORNO_INCLUSAO'] := aRetIncs
+    Else
+        lRet := .F.
+        Self:setStatus(400)
+        oJsonRet:Set("MENSAGEM", "A tag principal [CONTRATOS] nao foi encontrada ou nao e um Array.")
+    EndIf
+
+Return {lRet, oJsonRet:ToJson()}
+
+
+// =========================================================================
+// ALTERAÇÃO (PUT) POR CODIGO DO CONTRATO
+// =========================================================================
+WSMETHOD PUT AlterarContrato WSRECEIVE id WSSERVICE ContratosAlg
+    Local lRet       := .T.
+    Local cJson      := Self:GetContent()
+    Local oJsonReq   := JsonObject():New()
+    Local oJsonRet   := JsonObject():New()
+    Local oItemReq
+    Local oParceiro
+    Local cQuery     := ""
+    Local cAlias     := GetNextAlias()
+    Local cQueryZX6  := ""
+    Local cAliasZX6  := GetNextAlias()
+    Local nParc      := 0
+
+    FWLogMsg("INFO",, "ContratosAlg", "AlterarContrato", "", "01", "Inicio da Alteracao CODIGO: " + cValToChar(::id))
+    Self:SetContentType('application/json')
+
+    If Empty(::id)
+        Self:setStatus(400)
+        Self:SetResponse('{"STATUS_CODE":"400", "MENSAGEM":"CODIGO do contrato nao informado na URL."}')
+        Return .F.
+    EndIf
+
+    If !Empty(cJson) .And. !Empty(oJsonReq:FromJson(cJson))
+        Self:setStatus(400)
+        Self:SetResponse('{"STATUS_CODE":"400", "MENSAGEM":"Parser Json Error. Estrutura invalida."}')
+        Return .F.
+    EndIf
+
+    // Isola o objeto do array 
+    If oJsonReq['CONTRATOS'] != Nil .And. ValType(oJsonReq['CONTRATOS']) == "A" .And. Len(oJsonReq:GetJsonObject("CONTRATOS")) > 0
+        oItemReq := oJsonReq:GetJsonObject("CONTRATOS")[1]
+    Else
+        oItemReq := oJsonReq 
+    EndIf
+
+    // Busca o RECNO do contrato na ZX3
+    cQuery := "SELECT R_E_C_N_O_ AS RECNO_ZX3, ZX3_FILIAL, ZX3_CODIGO "
+    cQuery += "FROM " + RetSqlName("ZX3") + " ZX3 "
+    cQuery += "WHERE ZX3_CODIGO = '" + ::id + "' "
+    cQuery += "AND D_E_L_E_T_ = ' ' "
+    
+    cQuery := ChangeQuery(cQuery)
+    TCQuery cQuery New Alias (cAlias)
+    (cAlias)->(DbGoTop())
+
+    If !(cAlias)->(Eof())
+        DbSelectArea("ZX3")
+        ZX3->(DbGoTo((cAlias)->RECNO_ZX3))
+
+        Begin Transaction
+            
+            RecLock("ZX3", .F.) 
+            
+            // Tratamento do Fornecedor na SA2
+            If oItemReq['FORNECEDOR'] != nil
+                DbSelectArea("SA2")
+                SA2->(DbSetOrder(12))   
+                If SA2->(DbSeek(xFilial("SA2") + oItemReq['FORNECEDOR']))
+                    ZX3->ZX3_FORNEC := SA2->A2_COD
+                    ZX3->ZX3_LOJA   := SA2->A2_LOJA
+                    ZX3->ZX3_NOMFOR := SA2->A2_NOME
+                EndIf
+            EndIf
+
+            // Tratamento do Produto na SB1
+            If oItemReq['PRODUTO'] != nil
+                DbSelectArea("SB1")
+                SB1->(DbSetOrder(1))   
+                If SB1->(DbSeek(xFilial("SB1") + oItemReq['PRODUTO']))
+                    ZX3->ZX3_PROUTO     := SB1->B1_COD
+                    ZX3->ZX3_PRODES     := SB1->B1_DESC
+                EndIf
+            EndIf
+
+
+            iif(oItemReq['DATAINICIO']     != nil, ZX3->ZX3_DATA   := sToD(oItemReq['DATAINICIO'])            , nil)
+            iif(oItemReq['DATAFIM']        != nil, ZX3->ZX3_VIGENC := sToD(oItemReq['DATAFIM'])               , nil)
+            iif(oItemReq['CONDPAGAMENTO']  != nil, ZX3->ZX3_CONDPG := upper(oItemReq['CONDPAGAMENTO'])        , nil)
+            iif(oItemReq['MOEDA']          != nil, ZX3->ZX3_MOEDA  := upper(oItemReq['MOEDA'])                , nil)
+            iif(oItemReq['MOEDAPAGAMENTO'] != nil, ZX3->ZX3_MOEPG  := upper(oItemReq['MOEDAPAGAMENTO'])       , nil)
+            iif(oItemReq['UM']             != nil, ZX3->ZX3_UM     := upper(oItemReq['UM'])                   , nil)
+            iif(oItemReq['TIPOCONTRATO']   != nil, ZX3->ZX3_TIPOCO := upper(oItemReq['TIPOCONTRATO'])         , nil)
+            iif(oItemReq['QUANTIDADE']     != nil, ZX3->ZX3_QUANTI := val(cValToChar(oItemReq['QUANTIDADE'])) , nil)
+            iif(oItemReq['VALORUNITARIO']  != nil, ZX3->ZX3_VALOR  := val(cValToChar(oItemReq['VALORUNITARIO'])), nil)
+            iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_VLRTOT := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
+            iif(oItemReq['COTACAOFIXA']    != nil, ZX3->ZX3_COTAFI := val(cValToChar(oItemReq['COTACAOFIXA'])), nil)
+
+            ZX3->(MsUnlock())
+
+            // Tratamento da Tabela Filha (Parceiros) - Substituição Completa se enviado
+            If oItemReq['PARCEIROS'] != Nil .And. ValType(oItemReq['PARCEIROS']) == "A"
+                
+                // 1. Exclui os parceiros antigos deste contrato
+                cQueryZX6 := "SELECT R_E_C_N_O_ AS RECNO_ZX6 FROM " + RetSqlName("ZX6") + " "
+                cQueryZX6 += "WHERE ZX6_CODIGO = '" + ZX3->ZX3_CODIGO + "' AND ZX6_FILIAL = '" + ZX3->ZX3_FILIAL + "' AND D_E_L_E_T_ = ' ' "
+                cQueryZX6 := ChangeQuery(cQueryZX6)
+                TCQuery cQueryZX6 New Alias (cAliasZX6)
+                
+                DbSelectArea("ZX6")
+                While !(cAliasZX6)->(Eof())
+                    ZX6->(DbGoTo((cAliasZX6)->RECNO_ZX6))
+                    RecLock("ZX6", .F.)
+                    ZX6->(DbDelete())
+                    ZX6->(MsUnlock())
+                    (cAliasZX6)->(DbSkip())
+                EndDo
+                (cAliasZX6)->(DbCloseArea())
+
+                // 2. Insere os novos parceiros recebidos no JSON
+                For nParc := 1 To Len(oItemReq:GetJsonObject("PARCEIROS"))
+                    oParceiro := oItemReq:GetJsonObject("PARCEIROS")[nParc]
+                    
+                    If oParceiro['CODPAR'] != Nil
+                        RecLock("ZX6", .T.)
+                        
+                        ZX6->ZX6_FILIAL := ZX3->ZX3_FILIAL
+                        ZX6->ZX6_CODIGO := ZX3->ZX3_CODIGO
+                        ZX6->ZX6_ITEM   := StrZero(nParc, TamSx3("ZX6_ITEM")[1])
+                        
+                        DbSelectArea("SA2")
+                        SA2->(DbSetOrder(12)) 
+                        If SA2->(DbSeek(xFilial("SA2") + oParceiro['CODPAR']))
+                            ZX6->ZX6_FORNEC := SA2->A2_COD
+                            ZX6->ZX6_LOJA   := SA2->A2_LOJA
+                            ZX6->ZX6_NOMFOR := SA2->A2_NOME
+                        Else
+                            ZX6->ZX6_FORNEC := PadR(oParceiro['CODPAR'], TamSx3("ZX6_FORNEC")[1])
+                        EndIf
+                        
+                        ZX6->(MsUnlock())
+                    EndIf
+                Next nParc
+            EndIf
+
+        End Transaction
+
+        oJsonRet['STATUS_CODE'] := "200"
+        oJsonRet['MENSAGEM']    := "Contrato alterado com sucesso."
+
+    Else
+        Self:setStatus(404)
+        oJsonRet['STATUS_CODE'] := "404"
+        oJsonRet['MENSAGEM']    := "Contrato nao encontrado para alteracao com o CODIGO informado."
+        lRet := .F.
+    EndIf
+
+    (cAlias)->(DbCloseArea())
+    Self:SetResponse(EncodeUTF8(oJsonRet:ToJson()))
+    FreeObj(oJsonReq)
+    FreeObj(oJsonRet)
+Return lRet
+
+
+// =========================================================================
+// EXCLUSÃO (DELETE) POR CODIGO DO CONTRATO
+// =========================================================================
+WSMETHOD DELETE ExcluirContrato WSRECEIVE id WSSERVICE ContratosAlg
+    Local lRet       := .T.
+    Local oJsonRet   := JsonObject():New()
+    Local cQuery     := ""
+    Local cAlias     := GetNextAlias()
+    Local cQueryZX6  := ""
+    Local cAliasZX6  := GetNextAlias()
+
+    FWLogMsg("INFO",, "ContratosAlg", "ExcluirContrato", "", "01", "Inicio da Exclusao CODIGO: " + cValToChar(::id))
+    Self:SetContentType('application/json')
+
+    If Empty(::id)
+        Self:setStatus(400)
+        Self:SetResponse('{"STATUS_CODE":"400", "MENSAGEM":"CODIGO do contrato nao informado na URL."}')
+        Return .F.
+    EndIf
+
+    // Busca o RECNO do contrato na ZX3
+    cQuery := "SELECT R_E_C_N_O_ AS RECNO_ZX3, ZX3_FILIAL, ZX3_CODIGO "
+    cQuery += "FROM " + RetSqlName("ZX3") + " ZX3 "
+    cQuery += "WHERE ZX3_CODIGO = '" + ::id + "' "
+    cQuery += "AND D_E_L_E_T_ = ' ' "
+    
+    cQuery := ChangeQuery(cQuery)
+    TCQuery cQuery New Alias (cAlias)
+    (cAlias)->(DbGoTop())
+
+    If !(cAlias)->(Eof())
+        
+        Begin Transaction
+            
+            // 1. Apaga o Cabeçalho (ZX3)
+            DbSelectArea("ZX3")
+            ZX3->(DbGoTo((cAlias)->RECNO_ZX3))
+            
+            RecLock("ZX3", .F.)
+            ZX3->(DbDelete())
+            ZX3->(MsUnlock())
+
+            // 2. Apaga os Filhos (ZX6) em cascata
+            cQueryZX6 := "SELECT R_E_C_N_O_ AS RECNO_ZX6 FROM " + RetSqlName("ZX6") + " "
+            cQueryZX6 += "WHERE ZX6_CODIGO = '" + ZX3->ZX3_CODIGO + "' AND ZX6_FILIAL = '" + ZX3->ZX3_FILIAL + "' AND D_E_L_E_T_ = ' ' "
+            cQueryZX6 := ChangeQuery(cQueryZX6)
+            TCQuery cQueryZX6 New Alias (cAliasZX6)
+            
+            DbSelectArea("ZX6")
+            While !(cAliasZX6)->(Eof())
+                ZX6->(DbGoTo((cAliasZX6)->RECNO_ZX6))
+                RecLock("ZX6", .F.)
+                ZX6->(DbDelete())
+                ZX6->(MsUnlock())
+                (cAliasZX6)->(DbSkip())
+            EndDo
+            (cAliasZX6)->(DbCloseArea())
+
+        End Transaction
+
+        oJsonRet['STATUS_CODE'] := "200"
+        oJsonRet['MENSAGEM']    := "Contrato e parceiros vinculados excluidos com sucesso."
+    Else
+        Self:setStatus(404)
+        oJsonRet['STATUS_CODE'] := "404"
+        oJsonRet['MENSAGEM']    := "Contrato nao encontrado para exclusao."
+        lRet := .F.
+    EndIf
+
+    (cAlias)->(DbCloseArea())
+    Self:SetResponse(EncodeUTF8(oJsonRet:ToJson()))
+    FreeObj(oJsonRet)
+Return lRet
