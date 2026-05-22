@@ -49,7 +49,7 @@ If cGrupo $ "000003/000008" .and. Alltrim(M->E2_TIPO) == "PA"  .and. lTxMoeda
 	EndIf
 	
 	***********************************************************************************************************************
-	** 18/08/15 - Luis Felipe - Inicio - Garantiar que não haja a duplicidade de numeração dos PA´s destinados as Usinas **
+	** 18/08/15 - Luis Felipe - Inicio - Garantiar que não haja a duplicidade de numeração dos País destinados as Usinas **
 	***********************************************************************************************************************
 	cQuery := " Select R_E_C_N_O_ as Registro " + c_ent
     cQuery += " From " +RetSqlName("SE2")+ c_ent

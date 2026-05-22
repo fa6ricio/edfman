@@ -1,246 +1,451 @@
 #INCLUDE 'PROTHEUS.CH'
-#Include 'FWMVCDEF.ch'
-#Include 'RestFul.ch'
-#Include "TOTVS.CH"
-#Include "TOPCONN.CH"
-#INCLUDE "TBICONN.CH"   
-#INCLUDE 'RWMAKE.CH'
-#INCLUDE "TBICODE.CH"
+#INCLUDE 'FWMVCDEF.CH'
+#INCLUDE 'RESTFUL.CH'
+#INCLUDE "TOTVS.CH"
+#INCLUDE "TOPCONN.CH"
 
-/*/{Protheus.doc} WSRIncluiPagar
+/*/{Protheus.doc} ContasPagar
+Serviço REST para Gestão de Títulos a Pagar.
+Refatorado utilizando notação nativa de colchetes e array dinâmico.
 
-Serviço REST responsável por incluir os dados do título a pagar / fornecedor.
+@author Jose Eustaquio Ladeira Jr / Alex da Silva
+@since  21/05/2026
+/*/
 
-@author	Jose Eustaquio Ladeira Jr
-@since 	25/06/2021
+WSRESTFUL ContasPagar DESCRIPTION "Serviço REST dos Títulos a Pagar"
+    
+    WSDATA id AS STRING 
 
-/*/ 
+    WSMETHOD POST IncluiPagar ;
+        DESCRIPTION "Incluir os Títulos a Pagar" ;
+        WSSYNTAX "/edf/v1/ContasPagar/IncluiPagar" ;
+        PATH "/edf/v1/ContasPagar/IncluiPagar" ;
+        PRODUCES APPLICATION_JSON
 
-WSRESTFUL ContasPagar DESCRIPTION "Serviço REST Post dos Títulos a Pagar"
-	
-WSMETHOD POST DESCRIPTION "Incluir os Títulos a Pagar"
-
-
-    WSMETHOD GET ConsultarExclusao;
-	DESCRIPTION "Consultar se titulo pode ser excluido" ;
-	WSSYNTAX "/edf/v1/ContasPagar/ConsultarExclusao/{ID}";
-	PATH "/edf/v1/ContasPagar/ConsultarPedido";
-	PRODUCES APPLICATION_JSON	
-
-    WSMETHOD POST IncluiPagar DESCRIPTION "Incluir os Títulos a Pagar" ;
-    WSSYNTAX "/edf/v1/ContasPagar/IncluiPagar" ;
-    PATH "/edf/v1//ContasPagar/IncluiPagar";
-	PRODUCES APPLICATION_JSON
-
-    WSMETHOD PUT AlterarTituo ; 
-    DESCRIPTION "Alterar Titulo Financeiro" ;
-    WSSYNTAX "/edf/v1//ContasPagar/AlterarTituo" ;
-    PATH "/edf/v1//ContasPagar/AlterarTituo";
-	PRODUCES APPLICATION_JSON
+    WSMETHOD PUT AlterarTitulo ; 
+        DESCRIPTION "Alterar Titulo Financeiro" ;
+        WSSYNTAX "/edf/v1/ContasPagar/AlterarTitulo" ;
+        PATH "/edf/v1/ContasPagar/AlterarTitulo" ;
+        PRODUCES APPLICATION_JSON
 
     WSMETHOD DELETE ExcluirTitulo ; 
-    DESCRIPTION "Excluir Titulo Fiananceiro" ;
-    WSSYNTAX "/edf/v1//ContasPagar/ExcluirTitulo/{ID}" ;
-    PATH "/edf/v1//ContasPagar/ExcluirTitulo";
-	PRODUCES APPLICATION_JSON
+        DESCRIPTION "Excluir Titulo Financeiro" ;
+        WSSYNTAX "/edf/v1/ContasPagar/ExcluirTitulo" ;
+        PATH "/edf/v1/ContasPagar/ExcluirTitulo" ;
+        PRODUCES APPLICATION_JSON
 
-    
+    WSMETHOD GET ConsultarExclusao ;
+        DESCRIPTION "Consultar se titulo pode ser excluido" ;
+        WSSYNTAX "/edf/v1/ContasPagar/ConsultarExclusao/{id}" ;
+        PATH "/edf/v1/ContasPagar/ConsultarExclusao" ;
+        PRODUCES APPLICATION_JSON
 
 END WSRESTFUL
 
+// =========================================================================
+// IMPLEMENTAÇÃO: INCLUSÃO (POST) - MANTIDO INTACTO
+// =========================================================================
+WSMETHOD POST IncluiPagar WSSERVICE ContasPagar             
+    Local lRet       := .T.
+    Local cJson      := Self:GetContent()
+    Local cError     := ""
+    Local oJsonReq   := JsonObject():New()
+    Local oJsonRet   := JsonObject():New()
+    Local aRetMov    := {}
+        
+    FWLogMsg("INFO",, "ContasPagar", "IncluiPagar", "", "01", "Inicio da Inclusao")  
+    Self:SetContentType('application/json')
 
-/*
-	Metodo para retornar o token de autenticacao.
-*/
-WSMETHOD POST IncluiPagar WSSERVICE ContasPagar				
-	Local oAuthToken	:= AuthWebService():New()		
-	Local oResponse		:= Nil
-	Local aRetMov		:= {}
-	Local cBody			:= Self:GetContent()
-	Local cUserAuth		:= ""
-	Local cRetJSON		:= ""
-	Local cMsg			:= ""
-	Local lTokenOK		:= .F.	
-	Local lRet 		 	:= .F.
-		
-//	ConOut("Inicio WS Rest Inclui a Pagar")
-	cMsg := "Inicio WS Rest Inclui a Pagar"
-	FWLogMsg("INFO",, "POST", , , , cMsg, , ,)	
-
-	// Define o tipo de retorno do metodo.
-	::SetContentType("application/json")
-
-	// Pega o usuario passsado no header para autenticacao
-	cUserAuth := ::GetHeader("userAuth")
-
-	// Valida o Token passado no aHeaders
-	lTokenOK := oAuthToken:CheckToken(cUserAuth)
-
-	If	lTokenOK
-
-		If	FWJsonDeserialize(cBody,@oResponse)
-		
-			aRetMov 	:= gravaDados(oResponse)
-			lRet 		:= aRetMov[01]
-			cRetJSON	:= aRetMov[02]
-
-		Else
-			cRetJSON	:= "Ocorreu um erro no processamento do JSON"
-		EndIf
-		
-	Else
-		cRetJSON := oAuthToken:getLog()
-	EndIf		
-		
-	If	lRet
-		Self:SetResponse( cRetJSON )		
-//		ConOut("200 - "+cRetJSON)
-		cMsg := "200 - "+cRetJSON
-		FWLogMsg("INFO",, "POST", , , , cMsg, , ,)	
-	Else		
-		SetRestFault( 400, cRetJSON )
-//		ConOut("400 - "+cRetJSON)
-		cMsg := "400 - "+cRetJSON
-		FWLogMsg("INFO",, "POST", , , , cMsg, , ,)	
-	EndIf
-	
-Return(lRet)
-
-
-/*
-	Funcao reponsável por gravar os dados da inclusão do a pagar
-*/
-Static Function gravaDados(oResponse)	
-	Local oValid	:= Nil	
-	Local nRecord	:= 0
-	Local cRetJSON	:= ""
-	Local cItemJSON	:= ""
-	Local cStatus	:= ""	
-
-	Local cCodFil	:= ""
-	Local cPrefix	:= ""
-	Local cNumero	:= ""	\
-	Local cParcel	:= ""
-	Local cTipTit	:= ""
-	Local cIDTit	:= ""
-	Local cOper		:= ""
-    Local aVetSE2   := {}
-	Local cMensagem	:= ""
-	Local cMsgError	:= ""
-	Local lRet		:= .T.	
+    cError := oJsonReq:FromJson(cJson)
     
-    Private lMsErroAuto := .F.
+    If !Empty(cError)
+        Self:setStatus(400)
+        Self:SetResponse('{"errorCode":"400" , "errorMessage":"Parser Json Error. Verifique a estrutura."}')
+        lRet := .F.
+    Else
+        aRetMov := gravaDados(oJsonReq)
+        lRet    := aRetMov[1]
+        
+        If lRet
+            Self:SetResponse(EncodeUTF8(aRetMov[2]))
+        Else
+            Self:setStatus(400)
+            Self:SetResponse(EncodeUTF8(aRetMov[2]))
+        EndIf
+    EndIf
+    
+    FreeObj(oJsonReq)
+    FreeObj(oJsonRet)
+Return lRet
 
-	If	Len(oResponse:INCLUI_PAGAR) > 0
-		
-		cRetJSON += '{'
-		cRetJSON += '	"RETORNO_INCLUSAO": [
+/*
+    Função com Array Dinâmico e Prevenção Nativa de Crash (Colchetes) - MANTIDO INTACTO
+*/
+Static Function gravaDados(oJsonReq)   
+    Local nRecord   := 0
+    Local oJsonRet  := JsonObject():New()
+    Local aRetIncs  := {}
+    Local oItemRet  
+    Local oItemReq  
+    Local aVetSE2   := {}
+    Local cMsgError := ""
+    Local lRet      := .T.  
+    Local cNatureza := getMv('MV_ZZNTDUP')
 
-		For nRecord := 1 To Len(oResponse:INCLUI_PAGAR)
+    // Variáveis Privadas obrigatórias para o ExecAuto funcionar perfeitamente em background
+    Private lAutoErrNoFile := .T. 
+    Private lMsHelpAuto    := .T. 
+    Private lMsErroAuto    := .F.
 
-			// Pega os dados para retorno do JSON
-			cCodFil	:= AvKey(IIf(AttIsMemberOf(oResponse:INCLUI_PAGAR[nRecord],"FILIAL_TITULO"),oResponse:INCLUI_PAGAR[nRecord]:FILIAL_TITULO,""),"E2_FILIAL")
-			cPrefix	:= AvKey(IIf(AttIsMemberOf(oResponse:INCLUI_PAGAR[nRecord],"PREFIXO_TITULO"),oResponse:INCLUI_PAGAR[nRecord]:PREFIXO_TITULO,""),"E2_PREFIXO")
-			cNumero	:= AvKey(IIf(AttIsMemberOf(oResponse:INCLUI_PAGAR[nRecord],"NUMERO_TITULO"),oResponse:INCLUI_PAGAR[nRecord]:NUMERO_TITULO,""),"E2_NUM")
-			cParcel	:= AvKey(IIf(AttIsMemberOf(oResponse:INCLUI_PAGAR[nRecord],"PARCELA_TITULO"),oResponse:INCLUI_PAGAR[nRecord]:PARCELA_TITULO,""),"E2_PARCELA")
-			cTipTit	:= AvKey(IIf(AttIsMemberOf(oResponse:INCLUI_PAGAR[nRecord],"TIPO_TITULO"),oResponse:INCLUI_PAGAR[nRecord]:TIPO_TITULO,""),"E2_TIPO")
-			cIDTit	:= AvKey(IIf(AttIsMemberOf(oResponse:INCLUI_PAGAR[nRecord],"ID_TITULO"),oResponse:INCLUI_PAGAR[nRecord]:ID_TITULO,""),"E2_XIDSP")
-			cOper	:= AvKey(IIf(AttIsMemberOf(oResponse:INCLUI_PAGAR[nRecord],"OPERACAO"),oResponse:INCLUI_PAGAR[nRecord]:OPERACAO,"I"),"E2_XOPSP")
+    // Verifica se a tag principal existe e é um array
+    If oJsonReq['INCLUI_PAGAR'] != Nil .And. ValType(oJsonReq['INCLUI_PAGAR']) == "A"
+        
+        For nRecord := 1 To Len(oJsonReq:GetJsonObject("INCLUI_PAGAR"))
+            cMsgError := ""
+            oItemRet  := JsonObject():New()
+            aVetSE2   := {}
+            
+            // Isola o item atual do array
+            oItemReq  := oJsonReq:GetJsonObject("INCLUI_PAGAR")[nRecord]
+            
+            // Validação de chave obrigatória primária
+            If oItemReq['FILIAL'] == Nil .Or. Empty(oItemReq['FILIAL'])
+                cMsgError := "A Filial do titulo e obrigatoria e nao foi informada."
+            Else
+                // MONTAGEM DO ARRAY DINÂMICO 
+                AAdd(aVetSE2, {"E2_FILIAL", oItemReq['FILIAL'], Nil})
+                // Dados principais do Titulo
+                iif(oItemReq['PREFIXO']         != nil  ,aAdd(aVetSE2,{'E2_PREFIXO' ,upper(oItemReq:prefixo)    ,NIL}),nil)
+                iif(oItemReq['NUMERO']          != nil  ,aAdd(aVetSE2,{'E2_NUM'     ,upper(oItemReq:numero)     ,NIL}),nil)
+                iif(oItemReq['PARCELA']         != nil  ,aAdd(aVetSE2,{'E2_PARCELA' ,upper(oItemReq:parcela)    ,NIL}),nil)
+                iif(oItemReq['TIPO']            != nil  ,aAdd(aVetSE2,{'E2_TIPO'    ,upper(oItemReq:tipo)       ,NIL}),nil)
+                iif(oItemReq['NATUREZA']        != nil  ,aAdd(aVetSE2,{'E2_NATUREZ' ,upper(oItemReq:natureza)   ,NIL}), aAdd(aVetSE2,{'E2_NATUREZ' ,cNatureza, NIL}))
+                iif(oItemReq['FORNECEDOR']      != nil  ,aAdd(aVetSE2,{'E2_FORNECE' ,upper(oItemReq:fornecedor) ,NIL}),nil)
+                iif(oItemReq['LOJA']            != nil  ,aAdd(aVetSE2,{'E2_LOJA'    ,upper(oItemReq:loja)       ,NIL}),nil)
+                
+                iif(oItemReq['EMISSAO']         != nil  ,aAdd(aVetSE2,{'E2_EMISSAO' ,sToD(oItemReq:emissao)     ,NIL}),nil)
+                iif(oItemReq['VENCIMENTO']      != nil  ,aAdd(aVetSE2,{'E2_VENCTO'  ,sToD(oItemReq:vencimento)  ,NIL}),nil)
+                iif(oItemReq['VENCIMENTO']      != nil  ,aAdd(aVetSE2,{'E2_VENCREA' ,sToD(oItemReq:vencimento)  ,NIL}),nil)
+                
+                iif(oItemReq['FORMAPAGAMENTO']  != nil  ,aAdd(aVetSE2,{'E2_FORMPAG' ,oItemReq:formaPagamento    ,NIL}),nil)
+                iif(oItemReq['VALOR']           != nil  ,aAdd(aVetSE2,{'E2_VALOR'   ,val(cValToChar(oItemReq:valor)),NIL}),nil)
+                iif(oItemReq['MOEDA']           != nil  ,aAdd(aVetSE2,{'E2_MOEDA'   ,val(cValToChar(oItemReq:moeda)),NIL}),nil)
+                iif(oItemReq['TX_MOEDA']        != nil  ,aAdd(aVetSE2,{'E2_TXMOEDA'   ,val(cValToChar(oItemReq:moeda)),NIL}),nil)
+                iif(oItemReq['VALOR']           != nil  ,aAdd(aVetSE2,{'E2_VLCRUZ'  ,val(cValToChar(oItemReq:valor)),NIL}),nil) 
+                
+                iif(oItemReq['HISTORICO']       != nil  ,aAdd(aVetSE2,{'E2_HIST'    ,upper(oItemReq:historico)  ,NIL}),nil)
 
-			If	!Empty(cCodFil)
+                //iif(oItemReq['ID_TITULO']       != nil, aAdd(aVetSE2,{'E2_XIDSP'   ,upper(oItemReq['ID_TITULO'])       ,NIL}), nil)
+                //iif(oItemReq['OPERACAO']        != nil, aAdd(aVetSE2,{'E2_XOPSP'   ,upper(oItemReq['OPERACAO'])        ,NIL}), nil)
+                //iif(oItemReq['NUMERO_CONTRATO'] != nil, aAdd(aVetSE2,{'E2_XCONTS'  ,upper(oItemReq['NUMERO_CONTRATO']) ,NIL}), nil)
 
-				cMsgError	:= ""
-	
+                // Dados Bancários
+                iif(oItemReq['BANCO']           != nil  ,aAdd(aVetSE2,{'E2_FORBCO'  ,upper(oItemReq:banco)      ,NIL}),nil)
+                iif(oItemReq['AGENCIA']         != nil  ,aAdd(aVetSE2,{'E2_FORAGE'  ,upper(oItemReq:agencia)    ,NIL}),nil)
+                iif(oItemReq['CONTA']           != nil  ,aAdd(aVetSE2,{'E2_FORCTA'  ,upper(oItemReq:conta)      ,NIL}),nil)
+                iif(oItemReq['DIGITOCONTA']     != nil  ,aAdd(aVetSE2,{'E2_FCTADV'  ,upper(oItemReq:digitoConta),NIL}),nil)
+                iif(oItemReq['DIGITOAGENCIA']   != nil  ,aAdd(aVetSE2,{'E2_FAGEDV'  ,upper(oItemReq:digitoAgencia),NIL}),nil)
 
-
-                    aVetSE2 := {}
-                    aadd(aVetSE2, {"E2_FILIAL" , oResponse:INCLUI_PAGAR[nRecord]:FILIAL_TITULO        , Nil})
-                    aadd(aVetSE2, {"E2_NUM"    , oResponse:INCLUI_PAGAR[nRecord]:NUMERO_TITULO        , Nil})
-                    aadd(aVetSE2, {"E2_PREFIXO", oResponse:INCLUI_PAGAR[nRecord]:PREFIXO_TITULO       , Nil})
-                    aadd(aVetSE2, {"E2_PARCELA", oResponse:INCLUI_PAGAR[nRecord]:PARCELA_TITULO       , Nil})
-                    aadd(aVetSE2, {"E2_TIPO"   , oResponse:INCLUI_PAGAR[nRecord]:TIPO_TITULO          , Nil})
-                    aadd(aVetSE2, {"E2_NATUREZ", cNatureza                                            , Nil})
-                    aadd(aVetSE2, {"E2_FORNECE", oResponse:INCLUI_PAGAR[nRecord]:FORNECEDOR           , Nil})
-                    aadd(aVetSE2, {"E2_LOJA"   , oResponse:INCLUI_PAGAR[nRecord]:LOJA_FRONECEDOR      , Nil})
-                    aadd(aVetSE2, {"E2_NOMFOR" , oResponse:INCLUI_PAGAR[nRecord]:NOME_FORNECEDOR      , Nil})
-                    aadd(aVetSE2, {"E2_EMISSAO", oResponse:INCLUI_PAGAR[nRecord]:DATA_EMISSAO         , Nil})
-                    aadd(aVetSE2, {"E2_VENCTO" , sTod(oResponse:INCLUI_PAGAR[nRecord]:DATA_VENCIMENTO), Nil})
-                    aadd(aVetSE2, {"E2_VENCREA", sTod(oResponse:INCLUI_PAGAR[nRecord]:DATA_VENCIMENTO), Nil})
-                    aadd(aVetSE2, {"E2_VALOR"  , Val(oResponse:INCLUI_PAGAR[nRecord]:VALOR_TITULO)    , Nil})
-                    aadd(aVetSE2, {"E2_HIST"   , oResponse:INCLUI_PAGAR[nRecord]:HISTORICO            , Nil})
-                    aadd(aVetSE2, {"E2_MOEDA"  , oResponse:INCLUI_PAGAR[nRecord]:MOEDA                , Nil})
-                    aadd(aVetSE2, {"E2_MOEDA"  , Val(oResponse:INCLUI_PAGAR[nRecord]:PTAX)            , Nil})
                     aadd(aVetSE2, {"E2_XIDSP"  , oResponse:INCLUI_PAGAR[nRecord]:ID_TITULO            , Nil})
                     aadd(aVetSE2, {"E2_XOPSP"  , oResponse:INCLUI_PAGAR[nRecord]:OPERACAO             , Nil})
                     aadd(aVetSE2, {"E2_XCONTS" , oResponse:INCLUI_PAGAR[nRecord]:NUMERO_CONTRATO      , Nil})
-                                        
-					//valor em dolar    //ptax     //	
+                                    
+                Begin Transaction
+                        lMsErroAuto := .F.
+                        MsExecAuto( { |x,y,z| FINA050(x,y,z)}, aVetSE2,, 3)
+                        
+                        If lMsErroAuto
+                            cMsgError := TrataLog(GetAutoGRLog())
+                            DisarmTransaction()
+                        EndIf
+                End Transaction
+            EndIf
+            
+            // Monta o retorno isolado do item
+            If Empty(cMsgError)
+                oItemRet['STATUS_CODE'] := "200"
+                oItemRet['MENSAGEM']    := "Titulo incluido com sucesso."
+            Else
+                oItemRet['STATUS_CODE'] := "400"
+                oItemRet['MENSAGEM']    := cMsgError
+                lRet := .F.
+            EndIf
+            
+            // Feedback dos dados base que foram tentados 
+            oItemRet:Set("FILIAL_TITULO" , IIf(oItemReq['FILIAL_TITULO'] != Nil, oItemReq['FILIAL_TITULO'], ""))
+            oItemRet:Set("NUMERO_TITULO" , IIf(oItemReq['NUMERO_TITULO'] != Nil, oItemReq['NUMERO_TITULO'], ""))
+            oItemRet:Set("PREFIXO_TITULO", IIf(oItemReq['PREFIXO_TITULO']!= Nil, oItemReq['PREFIXO_TITULO'], ""))
+            
+            AAdd(aRetIncs, oItemRet)
+        Next nRecord
 
-					//problema compesar PA para cessionários   //Compensação Contas a Pagar (FINA340)
-					// Caso nao possuir erro, inclui o título na tabela temporaria.
-					If	Empty(cMsgError)
+        oJsonRet:Set("RETORNO_INCLUSAO", aRetIncs)
+    Else
+        lRet := .F.
+        Self:setStatus(400)
+        oJsonRet:Set("errorMessage", "A tag principal [INCLUI_PAGAR] nao foi encontrada ou nao e um Array.")
+    EndIf
 
-						Begin Transaction
-							    lMsErroAuto := .F.
-                                MSExecAuto({|x,y| FINA050(x,y)}, aVetSE2, 3)
-                                
-                                //Se houve erro, mostra o erro ao usuário e desarma a transação
-                                If lMsErroAuto
-                                    MostraErro()
-                                    DisarmTransaction()
-                                EndIf
-						End Transaction
-																		
-						cStatus		:= "200"
-						cMensagem	:= "Titulo a Pagar Incluido com Sucesso!!!"
-
-					Else
-						cStatus 	:= "400"
-						cMensagem	:= SubStr(cMsgError,1,Len(cMsgError)-2)
-					EndIf
-														
-
-			Else
-				cStatus 	:= "400"
-				cMensagem	:= "Não foi informado em qual filial será feita a inclusão do título a pagar"
-			EndIf
-					
-			// Gera o Arquivo de Retorno JSON
-			cItemJSON += '{'
-			cItemJSON += '	"STATUS_CODE": "'+cStatus+'"	,'
-			cItemJSON += '	"FILIAL_TITULO": "'+cCodFil+'"	,'
-			cItemJSON += '	"PREFIXO_TITULO": "'+cPrefix+'"	,'
-			cItemJSON += '	"NUMERO_TITULO": "'+cNumero+'"	,'
-			cItemJSON += '	"PARCELA_TITULO": "'+cParcel+'"	,'
-			cItemJSON += '	"TIPO_TITULO": "'+cTipTit+'"	,'
-			cItemJSON += '	"ID_TITULO": "'+cIDTit+'"	,'
-			cItemJSON += '	"OPERACAO": "'+cOper+'"	,'
-			cItemJSON += '	"MENSAGEM": "'+cMensagem+'"	'	
-			cItemJSON += '},'
-			
-			reiniciaObjeto(@oValid)
-
-		Next nRecord
-
-		cRetJSON += SubStr(cItemJSON,1,Len(cItemJSON)-1)
-		cRetJSON += ' 	]'
-		cRetJSON += '}' 
-
-	Else
-		lRet 		:= .F.
-		cRetJSON	:= "Nao existem itens a serem processados"
-	EndIf
-
-Return({lRet,cRetJSON})
-
+Return {lRet, oJsonRet:ToJson()}
 
 /*
-	Funcao para reiniciar objetos
+    Função Helper para tratar o Array de Erros do ExecAuto e formatar para o JSON - MANTIDO INTACTO
 */
-Static Function reiniciaObjeto(oObjeto)
-	
-	FreeObj(oObjeto)	
-	oObjeto := Nil		
-	
-Return()
+Static Function TrataLog(aLog)
+    Local nX     := 0
+    Local cErros := ""
 
+    If ValType(aLog) == "A"
+        For nX := 1 To Len(aLog)
+            cErros += StrTran(aLog[nX], CRLF, " ") + " | "
+        Next nX
+        
+        If Right(cErros, 3) == " | "
+            cErros := SubStr(cErros, 1, Len(cErros) - 3)
+        EndIf
+    Else
+        cErros := "Falha desconhecida no ExecAuto. Log indisponível."
+    EndIf
+    
+Return cErros
+
+// =========================================================================
+// IMPLEMENTAÇÃO: ALTERAÇÃO (PUT) POR ID_TITULO (E2_XIDSP)
+// =========================================================================
+WSMETHOD PUT AlterarTitulo WSRECEIVE id WSSERVICE ContasPagar
+    Local lRet       := .T.
+    Local cJson      := Self:GetContent()
+    Local oJsonReq   := JsonObject():New()
+    Local oJsonRet   := JsonObject():New()
+    Local aVetSE2    := {}
+    Local cMsgError  := ""
+    Local cQuery     := ""
+    Local cAlias     := GetNextAlias()
+
+    // Variáveis Privadas obrigatórias
+    Private lAutoErrNoFile := .T.
+    Private lMsHelpAuto    := .T.
+    Private lMsErroAuto    := .F.
+
+    FWLogMsg("INFO",, "ContasPagar", "AlterarTitulo", "", "01", "Inicio da Alteracao ID_TITULO: " + cValToChar(::id))
+    Self:SetContentType('application/json')
+
+    If Empty(::id)
+        Self:setStatus(400)
+        Self:SetResponse('{"STATUS_CODE":"400", "MENSAGEM":"ID_TITULO nao informado na URL."}')
+        Return .F.
+    EndIf
+
+    If !Empty(cJson) .And. !Empty(oJsonReq:FromJson(cJson))
+        Self:setStatus(400)
+        Self:SetResponse('{"STATUS_CODE":"400", "MENSAGEM":"Parser Json Error. Estrutura invalida."}')
+        Return .F.
+    EndIf
+
+    // Busca o RECNO do título utilizando a chave externa (E2_XIDSP)
+    cQuery := "SELECT R_E_C_N_O_ AS RECNO_SE2 "
+    cQuery += "FROM " + RetSqlName("SE2") + " SE2 "
+    cQuery += "WHERE E2_XIDSP = '" + PadR(::id, TamSx3("E2_XIDSP")[1]) + "' "
+    cQuery += "AND D_E_L_E_T_ = ' ' "
+    
+    cQuery := ChangeQuery(cQuery)
+    TCQuery cQuery New Alias (cAlias)
+    (cAlias)->(DbGoTop())
+
+    If !(cAlias)->(Eof())
+        DbSelectArea("SE2")
+        // Posiciona a SE2 fisicamente, ignorando índices
+        SE2->(DbGoTo((cAlias)->RECNO_SE2))
+
+        // Chaves obrigatórias para o ExecAuto encontrar o registro posicionado
+        AAdd(aVetSE2, {"E2_FILIAL" , SE2->E2_FILIAL , Nil})
+        AAdd(aVetSE2, {"E2_PREFIXO", SE2->E2_PREFIXO, Nil})
+        AAdd(aVetSE2, {"E2_NUM"    , SE2->E2_NUM    , Nil})
+        AAdd(aVetSE2, {"E2_PARCELA", SE2->E2_PARCELA, Nil})
+        AAdd(aVetSE2, {"E2_TIPO"   , SE2->E2_TIPO   , Nil})
+        AAdd(aVetSE2, {"E2_FORNECE", SE2->E2_FORNECE, Nil})
+        AAdd(aVetSE2, {"E2_LOJA"   , SE2->E2_LOJA   , Nil})
+
+        // ARRAY DINÂMICO: Atualiza apenas o que vier no JSON de PUT
+        If !Empty(cJson)
+            iif(oJsonReq['NATUREZA']   != nil, aAdd(aVetSE2, {'E2_NATUREZ', upper(oJsonReq['NATUREZA'])  , NIL}), nil)
+            iif(oJsonReq['VENCIMENTO'] != nil, aAdd(aVetSE2, {'E2_VENCTO' , sToD(oJsonReq['VENCIMENTO']) , NIL}), nil)
+            iif(oJsonReq['VENCIMENTO'] != nil, aAdd(aVetSE2, {'E2_VENCREA', sToD(oJsonReq['VENCIMENTO']) , NIL}), nil)
+            iif(oJsonReq['VALOR']      != nil, aAdd(aVetSE2, {'E2_VALOR'  , val(cValToChar(oJsonReq['VALOR'])), NIL}), nil)
+            iif(oJsonReq['HISTORICO']  != nil, aAdd(aVetSE2, {'E2_HIST'   , upper(oJsonReq['HISTORICO']) , NIL}), nil)
+            iif(oJsonReq['BANCO']      != nil, aAdd(aVetSE2, {'E2_FORBCO' , upper(oJsonReq['BANCO'])     , NIL}), nil)
+            iif(oJsonReq['AGENCIA']    != nil, aAdd(aVetSE2, {'E2_FORAGE' , upper(oJsonReq['AGENCIA'])   , NIL}), nil)
+            iif(oJsonReq['CONTA']      != nil, aAdd(aVetSE2, {'E2_FORCTA' , upper(oJsonReq['CONTA'])     , NIL}), nil)
+        EndIf
+
+        If Len(aVetSE2) > 7 
+            Begin Transaction
+                lMsErroAuto := .F.
+                MsExecAuto({|x,y,z| FINA050(x,y,z)}, aVetSE2,, 4) // 4 = Alteração
+
+                If lMsErroAuto
+                    cMsgError := TrataLog(GetAutoGRLog())
+                    DisarmTransaction()
+                EndIf
+            End Transaction
+
+            If Empty(cMsgError)
+                oJsonRet['STATUS_CODE'] := "200"
+                oJsonRet['MENSAGEM']    := "Titulo alterado com sucesso."
+            Else
+                Self:setStatus(400)
+                oJsonRet['STATUS_CODE'] := "400"
+                oJsonRet['MENSAGEM']    := cMsgError
+                lRet := .F.
+            EndIf
+        Else
+            Self:setStatus(400)
+            oJsonRet['STATUS_CODE'] := "400"
+            oJsonRet['MENSAGEM']    := "Nenhum campo valido para alteracao foi enviado."
+            lRet := .F.
+        EndIf
+    Else
+        Self:setStatus(404)
+        oJsonRet['STATUS_CODE'] := "404"
+        oJsonRet['MENSAGEM']    := "Titulo nao encontrado para alteracao com o ID_TITULO informado."
+        lRet := .F.
+    EndIf
+
+    (cAlias)->(DbCloseArea())
+    Self:SetResponse(EncodeUTF8(oJsonRet:ToJson()))
+    FreeObj(oJsonReq)
+    FreeObj(oJsonRet)
+Return lRet
+
+// =========================================================================
+// IMPLEMENTAÇÃO: EXCLUSÃO (DELETE) POR ID_TITULO (E2_XIDSP)
+// =========================================================================
+WSMETHOD DELETE ExcluirTitulo WSRECEIVE id WSSERVICE ContasPagar
+    Local lRet       := .T.
+    Local oJsonRet   := JsonObject():New()
+    Local aVetSE2    := {}
+    Local cMsgError  := ""
+    Local cQuery     := ""
+    Local cAlias     := GetNextAlias()
+
+    Private lAutoErrNoFile := .T.
+    Private lMsHelpAuto    := .T.
+    Private lMsErroAuto    := .F.
+
+    FWLogMsg("INFO",, "ContasPagar", "ExcluirTitulo", "", "01", "Inicio da Exclusao ID_TITULO: " + cValToChar(::id))
+    Self:SetContentType('application/json')
+
+    If Empty(::id)
+        Self:setStatus(400)
+        Self:SetResponse('{"STATUS_CODE":"400", "MENSAGEM":"ID_TITULO nao informado na URL."}')
+        Return .F.
+    EndIf
+
+    cQuery := "SELECT R_E_C_N_O_ AS RECNO_SE2 "
+    cQuery += "FROM " + RetSqlName("SE2") + " SE2 "
+    cQuery += "WHERE E2_XIDSP = '" + PadR(::id, TamSx3("E2_XIDSP")[1]) + "' "
+    cQuery += "AND D_E_L_E_T_ = ' ' "
+    
+    cQuery := ChangeQuery(cQuery)
+    TCQuery cQuery New Alias (cAlias)
+    (cAlias)->(DbGoTop())
+
+    If !(cAlias)->(Eof())
+        DbSelectArea("SE2")
+        SE2->(DbGoTo((cAlias)->RECNO_SE2))
+
+        If SE2->E2_SALDO < SE2->E2_VALOR .Or. !Empty(SE2->E2_BAIXA)
+            Self:setStatus(400)
+            oJsonRet['STATUS_CODE'] := "400"
+            oJsonRet['MENSAGEM']    := "Titulo nao pode ser excluido pois possui baixas/pagamentos."
+            lRet := .F.
+        Else
+            AAdd(aVetSE2, {"E2_FILIAL" , SE2->E2_FILIAL , Nil})
+            AAdd(aVetSE2, {"E2_PREFIXO", SE2->E2_PREFIXO, Nil})
+            AAdd(aVetSE2, {"E2_NUM"    , SE2->E2_NUM    , Nil})
+            AAdd(aVetSE2, {"E2_PARCELA", SE2->E2_PARCELA, Nil})
+            AAdd(aVetSE2, {"E2_TIPO"   , SE2->E2_TIPO   , Nil})
+            AAdd(aVetSE2, {"E2_FORNECE", SE2->E2_FORNECE, Nil})
+            AAdd(aVetSE2, {"E2_LOJA"   , SE2->E2_LOJA   , Nil})
+
+            Begin Transaction
+                lMsErroAuto := .F.
+                MsExecAuto({|x,y,z| FINA050(x,y,z)}, aVetSE2,, 5) // 5 = Exclusão
+
+                If lMsErroAuto
+                    cMsgError := TrataLog(GetAutoGRLog())
+                    DisarmTransaction()
+                EndIf
+            End Transaction
+
+            If Empty(cMsgError)
+                oJsonRet['STATUS_CODE'] := "200"
+                oJsonRet['MENSAGEM']    := "Titulo excluido com sucesso."
+            Else
+                Self:setStatus(400)
+                oJsonRet['STATUS_CODE'] := "400"
+                oJsonRet['MENSAGEM']    := cMsgError
+                lRet := .F.
+            EndIf
+        EndIf
+    Else
+        Self:setStatus(404)
+        oJsonRet['STATUS_CODE'] := "404"
+        oJsonRet['MENSAGEM']    := "Titulo nao encontrado para exclusao com o ID_TITULO informado."
+        lRet := .F.
+    EndIf
+
+    (cAlias)->(DbCloseArea())
+    Self:SetResponse(EncodeUTF8(oJsonRet:ToJson()))
+    FreeObj(oJsonRet)
+Return lRet
+
+// =========================================================================
+// IMPLEMENTAÇÃO: CONSULTA (GET) POR ID_TITULO (E2_XIDSP)
+// =========================================================================
+WSMETHOD GET ConsultarExclusao WSRECEIVE id WSSERVICE ContasPagar
+    Local lRet       := .T.
+    Local oJsonRet   := JsonObject():New()
+    Local cQuery     := ""
+    Local cAlias     := GetNextAlias()
+
+    FWLogMsg("INFO",, "ContasPagar", "ConsultarExclusao", "", "01", "Consulta ID_TITULO: " + cValToChar(::id))
+    Self:SetContentType('application/json')
+
+    If Empty(::id)
+        Self:setStatus(400)
+        Self:SetResponse('{"STATUS_CODE":"400", "MENSAGEM":"ID_TITULO nao informado na URL."}')
+        Return .F.
+    EndIf
+
+    cQuery := "SELECT E2_SALDO, E2_VALOR, E2_BAIXA "
+    cQuery += "FROM " + RetSqlName("SE2") + " SE2 "
+    cQuery += "WHERE E2_XIDSP = '" + PadR(::id, TamSx3("E2_XIDSP")[1]) + "' "
+    cQuery += "AND D_E_L_E_T_ = ' ' "
+    
+    cQuery := ChangeQuery(cQuery)
+    TCQuery cQuery New Alias (cAlias)
+    (cAlias)->(DbGoTop())
+
+    If !(cAlias)->(Eof())
+        If (cAlias)->E2_SALDO < (cAlias)->E2_VALOR .Or. !Empty((cAlias)->E2_BAIXA)
+            oJsonRet['STATUS_CODE']  := "400"
+            oJsonRet['PODE_EXCLUIR'] := .F.
+            oJsonRet['MENSAGEM']     := "Titulo possui baixas e nao pode ser excluido."
+        Else
+            oJsonRet['STATUS_CODE']  := "200"
+            oJsonRet['PODE_EXCLUIR'] := .T.
+            oJsonRet['MENSAGEM']     := "Titulo disponivel para exclusao."
+        EndIf
+    Else
+        Self:setStatus(404)
+        oJsonRet['STATUS_CODE']  := "404"
+        oJsonRet['PODE_EXCLUIR'] := .F.
+        oJsonRet['MENSAGEM']     := "Titulo nao encontrado com o ID_TITULO informado."
+        lRet := .F.
+    EndIf
+
+    (cAlias)->(DbCloseArea())
+    Self:SetResponse(EncodeUTF8(oJsonRet:ToJson()))
+    FreeObj(oJsonRet)
+Return lRet
