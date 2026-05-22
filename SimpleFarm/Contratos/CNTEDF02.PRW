@@ -6,9 +6,8 @@
 
 /*/{Protheus.doc} ContasPagar
 Serviço REST para Gestão de Títulos a Pagar.
-Refatorado utilizando notação nativa de colchetes e array dinâmico.
 
-@author Jose Eustaquio Ladeira Jr / Alex da Silva
+@author Alex da Silva
 @since  21/05/2026
 /*/
 
@@ -43,7 +42,7 @@ WSRESTFUL ContasPagar DESCRIPTION "Serviço REST dos Títulos a Pagar"
 END WSRESTFUL
 
 // =========================================================================
-// IMPLEMENTAÇÃO: INCLUSÃO (POST) - MANTIDO INTACTO
+// INCLUSÃO (POST)
 // =========================================================================
 WSMETHOD POST IncluiPagar WSSERVICE ContasPagar             
     Local lRet       := .T.
@@ -79,7 +78,7 @@ WSMETHOD POST IncluiPagar WSSERVICE ContasPagar
 Return lRet
 
 /*
-    Função com Array Dinâmico e Prevenção Nativa de Crash (Colchetes) - MANTIDO INTACTO
+    Função com Array Dinâmico e Prevenção Nativa de Crash
 */
 Static Function gravaDados(oJsonReq)   
     Local nRecord   := 0
@@ -118,26 +117,29 @@ Static Function gravaDados(oJsonReq)
                 iif(oItemReq['PREFIXO_TITULO']          != nil  ,aAdd(aVetSE2,{'E2_PREFIXO' ,upper(oItemReq:prefixo_titulo)    ,NIL}),nil)
                 iif(oItemReq['PARCELA_TITULO']          != nil  ,aAdd(aVetSE2,{'E2_PARCELA' ,upper(oItemReq:parcela_titulo)    ,NIL}),nil)
                 iif(oItemReq['TIPO_TITULO']             != nil  ,aAdd(aVetSE2,{'E2_TIPO'    ,upper(oItemReq:tipo_titulo)       ,NIL}),nil)
-                iif(oItemReq['NATUREZA']                != nil  ,aAdd(aVetSE2,{'E2_NATUREZ' ,upper(oItemReq:natureza)   ,NIL}), aAdd(aVetSE2,{'E2_NATUREZ' ,cNatureza, NIL}))
-                iif(oItemReq['FORNECEDOR']              != nil  ,aAdd(aVetSE2,{'E2_FORNECE' ,upper(oItemReq:fornecedor) ,NIL}),nil)
-                iif(oItemReq['LOJA']                    != nil  ,aAdd(aVetSE2,{'E2_LOJA'    ,upper(oItemReq:loja)       ,NIL}),nil)
+                iif(oItemReq['NATUREZA']                != nil  ,aAdd(aVetSE2,{'E2_NATUREZ' ,upper(oItemReq:natureza)          ,NIL}), aAdd(aVetSE2,{'E2_NATUREZ' ,cNatureza, NIL}))
                 
+                If oItemReq['FORNECEDOR'] != nil
+                    dbSelectarea("SA2")
+                    dbSetOrder(12)   
+                    If dbseek(xFilial("SA2")+oItemReq['FORNECEDOR'])
+                       aAdd(aVetSE2,{'E2_FORNECE' ,SA2->A2_COD ,NIL})
+                       aAdd(aVetSE2,{'E2_LOJA' ,SA2->A2_LOJA,NIL})
+                    EndIf
+                Endif
+
                 iif(oItemReq['DATA_EMISSAO']            != nil  ,aAdd(aVetSE2,{'E2_EMISSAO' ,sToD(oItemReq:data_emissao)     ,NIL}),nil)
                 iif(oItemReq['DATA_VENCIMENTO']         != nil  ,aAdd(aVetSE2,{'E2_VENCTO'  ,sToD(oItemReq:data_vencimento)  ,NIL}),nil)
                 iif(oItemReq['DATA_VENCIMENTO']         != nil  ,aAdd(aVetSE2,{'E2_VENCREA' ,sToD(oItemReq:data_vencimento)  ,NIL}),nil)
-                
                 iif(oItemReq['FORMAPAGAMENTO']          != nil  ,aAdd(aVetSE2,{'E2_FORMPAG' ,oItemReq:formaPagamento    ,NIL}),nil)
                 iif(oItemReq['VALOR_TITULO']            != nil  ,aAdd(aVetSE2,{'E2_VALOR'   ,val(cValToChar(oItemReq:valor_titulo)),NIL}),nil)
                 iif(oItemReq['VALOR_TITULO']            != nil  ,aAdd(aVetSE2,{'E2_VLCRUZ'  ,val(cValToChar(oItemReq:valor_titulo)),NIL}),nil) 
                 iif(oItemReq['MOEDA']                   != nil  ,aAdd(aVetSE2,{'E2_MOEDA'   ,val(cValToChar(oItemReq:moeda)),NIL}),nil)
                 iif(oItemReq['PTAX']                    != nil  ,aAdd(aVetSE2,{'E2_TXMOEDA'   ,val(cValToChar(oItemReq:ptax)),NIL}),nil)
-                
                 iif(oItemReq['HISTORICO']               != nil  ,aAdd(aVetSE2,{'E2_HIST'    ,upper(oItemReq:historico)  ,NIL}),nil)
-
-                iif(oItemReq['ID_TITULO']       != nil, aAdd(aVetSE2,{'E2_ZZIDTIT'   ,upper(oItemReq['ID_TITULO'])       ,NIL}), nil)
-                iif(oItemReq['OPERACAO']        != nil, aAdd(aVetSE2,{'E2_ZZOPERA'   ,upper(oItemReq['OPERACAO'])        ,NIL}), nil)
-                iif(oItemReq['NUMERO_CONTRATO'] != nil, aAdd(aVetSE2,{'E2_ZZCONTR'  ,upper(oItemReq['NUMERO_CONTRATO']) ,NIL}), nil)
-
+                iif(oItemReq['ID_TITULO']               != nil, aAdd(aVetSE2,{'E2_ZZIDTIT'   ,upper(oItemReq['ID_TITULO'])       ,NIL}), nil)
+                iif(oItemReq['OPERACAO']                != nil, aAdd(aVetSE2,{'E2_ZZOPERA'   ,upper(oItemReq['OPERACAO'])        ,NIL}), nil)
+                iif(oItemReq['NUMERO_CONTRATO']         != nil, aAdd(aVetSE2,{'E2_ZZCONTR'  ,upper(oItemReq['NUMERO_CONTRATO']) ,NIL}), nil)
                 // Dados Bancários
                 iif(oItemReq['BANCO']                   != nil  ,aAdd(aVetSE2,{'E2_FORBCO'  ,upper(oItemReq:banco)      ,NIL}),nil)
                 iif(oItemReq['AGENCIA']                 != nil  ,aAdd(aVetSE2,{'E2_FORAGE'  ,upper(oItemReq:agencia)    ,NIL}),nil)
@@ -168,10 +170,10 @@ Static Function gravaDados(oJsonReq)
             EndIf
             
             // Feedback dos dados base que foram tentados 
-            oItemRet['FILIAL_TITULO']    := IIf(oItemReq['FILIAL_TITULO']    != Nil, oItemReq['FILIAL_TITULO']   , "")
-            oItemRet['NUMERO_TITULO']    := IIf(oItemReq['NUMERO_TITULO']    != Nil, oItemReq['NUMERO_TITULO']   , "")
-            oItemRet['PREFIXO_TITULO']   := IIf(oItemReq['PREFIXO_TITULO']   != Nil, oItemReq['PREFIXO_TITULO']  , "")
-            //oItemRet['ID_TITULO'] := IIf(oItemReq['ID_TITULO'] != Nil, oItemReq['ID_TITULO'], "")
+            oItemRet['FILIAL_TITULO']       := IIf(oItemReq['FILIAL_TITULO']    != Nil, oItemReq['FILIAL_TITULO']   , "")
+            oItemRet['NUMERO_TITULO']       := IIf(oItemReq['NUMERO_TITULO']    != Nil, oItemReq['NUMERO_TITULO']   , "")
+            oItemRet['PREFIXO_TITULO']      := IIf(oItemReq['PREFIXO_TITULO']   != Nil, oItemReq['PREFIXO_TITULO']  , "")
+            oItemRet['ID_TITULO']           := IIf(oItemReq['ID_TITULO']        != Nil, oItemReq['ID_TITULO']       , "")
             
             AAdd(aRetIncs, oItemRet)
         Next nRecord
@@ -186,7 +188,7 @@ Static Function gravaDados(oJsonReq)
 Return {lRet, oJsonRet:ToJson()}
 
 /*
-    Função Helper para tratar o Array de Erros do ExecAuto e formatar para o JSON - MANTIDO INTACTO
+    Função Helper para tratar o Array de Erros do ExecAuto e formatar para o JSON
 */
 Static Function TrataLog(aLog)
     Local nX     := 0
@@ -207,7 +209,7 @@ Static Function TrataLog(aLog)
 Return cErros
 
 // =========================================================================
-// IMPLEMENTAÇÃO: ALTERAÇÃO (PUT) POR ID_TITULO 
+// ALTERAÇÃO (PUT) POR ID_TITULO 
 // =========================================================================
 WSMETHOD PUT AlterarTitulo WSRECEIVE id WSSERVICE ContasPagar
     Local lRet       := .T.
@@ -315,7 +317,7 @@ WSMETHOD PUT AlterarTitulo WSRECEIVE id WSSERVICE ContasPagar
 Return lRet
 
 // =========================================================================
-// IMPLEMENTAÇÃO: EXCLUSÃO (DELETE) POR ID_TITULO
+// EXCLUSÃO (DELETE) POR ID_TITULO
 // =========================================================================
 WSMETHOD DELETE ExcluirTitulo WSRECEIVE id WSSERVICE ContasPagar
     Local lRet       := .T.
@@ -398,7 +400,7 @@ WSMETHOD DELETE ExcluirTitulo WSRECEIVE id WSSERVICE ContasPagar
 Return lRet
 
 // =========================================================================
-// IMPLEMENTAÇÃO: CONSULTA (GET) POR ID_TITULO
+// CONSULTA (GET) POR ID_TITULO
 // =========================================================================
 WSMETHOD GET ConsultarExclusao WSRECEIVE id WSSERVICE ContasPagar
     Local lRet       := .T.
