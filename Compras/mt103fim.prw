@@ -224,6 +224,9 @@ If (INCLUI .OR. nOpcao = 4) .AND. nConfirma=1
 					U_PUTEFENT()
 				Endif
 			EndIF
+			//Gerar ZX4 da nota
+
+			
 		EndIf
 	EndIF
 /*
