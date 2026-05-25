@@ -52,6 +52,7 @@ Local aMenu :=	{}
 	ADD OPTION aMenu TITLE 'Excluir'    ACTION 'VIEWDEF.CNTEDF01' 	OPERATION 5 ACCESS 0
 	ADD OPTION aMenu TITLE 'Imprimir'   ACTION 'VIEWDEF.CNTEDF01'	OPERATION 8 ACCESS 0
 	ADD OPTION aMenu TITLE 'Copiar'     ACTION 'VIEWDEF.CNTEDF01'	OPERATION 9 ACCESS 0
+	ADD OPTION aMenu TITLE 'Gerar Titulos'     ACTION 'U_XXXX'	OPERATION 9 ACCESS 0
 
 Return(aMenu)
 
@@ -177,7 +178,7 @@ Static Function ViewDef()
 	oView:AddGrid(  'ID_V_GRD_ZX6', oStruZX6, 'ID_M_GRD_ZX6')
 
 
-	//oView:AddUserButton( 'Gerar Produtos', 'CLIPS', {|oView| MCOM01A()} )
+	oView:AddUserButton( 'Gerar Titulo', 'CLIPS', {|oView| TT003()} )
 	//oView:AddUserButton( 'Gerar Solicitacao', 'CLIPS', {|oView| GERASOLIC()} )
 	
 

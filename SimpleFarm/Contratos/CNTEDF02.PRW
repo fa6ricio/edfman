@@ -135,10 +135,10 @@ Static Function gravaDados(oJsonReq)
                 iif(oItemReq['VALOR_TITULO']            != nil  ,aAdd(aVetSE2,{'E2_VALOR'   ,val(cValToChar(oItemReq:valor_titulo)),NIL}),nil)
                 iif(oItemReq['VALOR_TITULO']            != nil  ,aAdd(aVetSE2,{'E2_VLCRUZ'  ,val(cValToChar(oItemReq:valor_titulo)),NIL}),nil) 
                 iif(oItemReq['MOEDA']                   != nil  ,aAdd(aVetSE2,{'E2_MOEDA'   ,val(cValToChar(oItemReq:moeda)),NIL}),nil)
-                iif(oItemReq['PTAX']                    != nil  ,aAdd(aVetSE2,{'E2_TXMOEDA'   ,val(cValToChar(oItemReq:ptax)),NIL}),nil)
+                iif(oItemReq['PTAX']                    != nil  ,aAdd(aVetSE2,{'E2_TXMOEDA' ,val(cValToChar(oItemReq:ptax)),NIL}),nil)
                 iif(oItemReq['HISTORICO']               != nil  ,aAdd(aVetSE2,{'E2_HIST'    ,upper(oItemReq:historico)  ,NIL}),nil)
-                iif(oItemReq['ID_TITULO']               != nil, aAdd(aVetSE2,{'E2_ZZIDTIT'   ,upper(oItemReq['ID_TITULO'])       ,NIL}), nil)
-                iif(oItemReq['OPERACAO']                != nil, aAdd(aVetSE2,{'E2_ZZOPERA'   ,upper(oItemReq['OPERACAO'])        ,NIL}), nil)
+                iif(oItemReq['ID_TITULO']               != nil, aAdd(aVetSE2,{'E2_ZZIDTIT'  ,upper(oItemReq['ID_TITULO'])       ,NIL}), nil)
+                iif(oItemReq['OPERACAO']                != nil, aAdd(aVetSE2,{'E2_ZZOPERA'  ,upper(oItemReq['OPERACAO'])        ,NIL}), nil)
                 iif(oItemReq['NUMERO_CONTRATO']         != nil, aAdd(aVetSE2,{'E2_ZZCONTR'  ,upper(oItemReq['NUMERO_CONTRATO']) ,NIL}), nil)
                 // Dados Bancários
                 iif(oItemReq['BANCO']                   != nil  ,aAdd(aVetSE2,{'E2_FORBCO'  ,upper(oItemReq:banco)      ,NIL}),nil)
@@ -148,15 +148,23 @@ Static Function gravaDados(oJsonReq)
                 iif(oItemReq['DIGITOAGENCIA']           != nil  ,aAdd(aVetSE2,{'E2_FAGEDV'  ,upper(oItemReq:digitoAgencia),NIL}),nil)
 
                                     
-                Begin Transaction
-                        lMsErroAuto := .F.
-                        MsExecAuto( { |x,y,z| FINA050(x,y,z)}, aVetSE2,, 3)
-                        
-                        If lMsErroAuto
-                            cMsgError := TrataLog(GetAutoGRLog())
-                            DisarmTransaction()
-                        EndIf
-                End Transaction
+                if val(cValToChar(oItemReq:moeda)) = '1' .or. val(cValToChar(oItemReq:ptax)) > 0
+                    Begin Transaction
+                            lMsErroAuto := .F.
+                            MsExecAuto( { |x,y,z| FINA050(x,y,z)}, aVetSE2,, 3)
+                            
+                            If lMsErroAuto
+                                cMsgError := TrataLog(GetAutoGRLog())
+                                DisarmTransaction()
+                            else
+                                //Gerar ZX5
+
+                            EndIf
+
+                    End Transaction
+                Else
+
+                EndIF
             EndIf
             
             // Monta o retorno isolado do item
