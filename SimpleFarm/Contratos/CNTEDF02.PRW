@@ -62,7 +62,7 @@ WSMETHOD POST IncluiPagar WSSERVICE ContasPagar
         Self:SetResponse('{"errorCode":"400" , "errorMessage":"Parser Json Error. Verifique a estrutura."}')
         lRet := .F.
     Else
-        aRetMov := gravaDados(oJsonReq)
+        aRetMov := u_gravaDados(oJsonReq)
         lRet    := aRetMov[1]
         
         If lRet
@@ -80,7 +80,7 @@ Return lRet
 /*
     Função com Array Dinâmico e Prevenção Nativa de Crash
 */
-Static Function gravaDados(oJsonReq)   
+User Function gravaDados(oJsonReq)   
     Local nRecord   := 0
     Local oJsonRet  := JsonObject():New()
     Local aRetIncs  := {}
@@ -90,13 +90,14 @@ Static Function gravaDados(oJsonReq)
     Local cMsgError := ""
     Local lRet      := .T.  
     Local cNatureza := getMv('MV_ZZNTDUP')
+    Local nValorOrig := 0
+    Local nTaxaPtax  := 0
+    Local nMoedaTit  := 1    
 
-    // Variáveis Privadas obrigatórias para o ExecAuto funcionar perfeitamente em background
     Private lAutoErrNoFile := .T. 
     Private lMsHelpAuto    := .T. 
     Private lMsErroAuto    := .F.
 
-    // Verifica se a tag principal existe e é um array
     If oJsonReq['INCLUI_PAGAR'] != Nil .And. ValType(oJsonReq['INCLUI_PAGAR']) == "A"
         
         For nRecord := 1 To Len(oJsonReq:GetJsonObject("INCLUI_PAGAR"))
@@ -104,38 +105,63 @@ Static Function gravaDados(oJsonReq)
             oItemRet  := JsonObject():New()
             aVetSE2   := {}
             
-            // Isola o item atual do array
+
             oItemReq  := oJsonReq:GetJsonObject("INCLUI_PAGAR")[nRecord]
-            
-            // Validação de chave obrigatória primária
+
             If oItemReq['FILIAL_TITULO'] == Nil .Or. Empty(oItemReq['FILIAL_TITULO'])
                 cMsgError := "A Filial do titulo e obrigatoria e nao foi informada."
             Else
                 AAdd(aVetSE2, {"E2_FILIAL", oItemReq['FILIAL_TITULO'], Nil})
-                // Dados principais do Titulo
+
                 iif(oItemReq['NUMERO_TITULO']           != nil  ,aAdd(aVetSE2,{'E2_NUM'     ,upper(oItemReq:numero_titulo)     ,NIL}),nil)
                 iif(oItemReq['PREFIXO_TITULO']          != nil  ,aAdd(aVetSE2,{'E2_PREFIXO' ,upper(oItemReq:prefixo_titulo)    ,NIL}),nil)
                 iif(oItemReq['PARCELA_TITULO']          != nil  ,aAdd(aVetSE2,{'E2_PARCELA' ,upper(oItemReq:parcela_titulo)    ,NIL}),nil)
                 iif(oItemReq['TIPO_TITULO']             != nil  ,aAdd(aVetSE2,{'E2_TIPO'    ,upper(oItemReq:tipo_titulo)       ,NIL}),nil)
                 iif(oItemReq['NATUREZA']                != nil  ,aAdd(aVetSE2,{'E2_NATUREZ' ,upper(oItemReq:natureza)          ,NIL}), aAdd(aVetSE2,{'E2_NATUREZ' ,cNatureza, NIL}))
                 
-                If oItemReq['FORNECEDOR'] != nil
+                If oItemReq['FORNECEDOR'] != nil .And.  oItemReq['ORIGEM'] <> "MARKBROWSE"
                     dbSelectarea("SA2")
                     dbSetOrder(12)   
                     If dbseek(xFilial("SA2")+oItemReq['FORNECEDOR'])
                        aAdd(aVetSE2,{'E2_FORNECE' ,SA2->A2_COD ,NIL})
                        aAdd(aVetSE2,{'E2_LOJA' ,SA2->A2_LOJA,NIL})
                     EndIf
+                Elseif oItemReq['ORIGEM'] == "MARKBROWSE"
+                    aAdd(aVetSE2,{'E2_FORNECE' ,oItemReq:fornecedor             ,NIL})
+                    aAdd(aVetSE2,{'E2_LOJA' ,oItemReq:loja                      ,NIL})
                 Endif
 
                 iif(oItemReq['DATA_EMISSAO']            != nil  ,aAdd(aVetSE2,{'E2_EMISSAO' ,sToD(oItemReq:data_emissao)     ,NIL}),nil)
                 iif(oItemReq['DATA_VENCIMENTO']         != nil  ,aAdd(aVetSE2,{'E2_VENCTO'  ,sToD(oItemReq:data_vencimento)  ,NIL}),nil)
                 iif(oItemReq['DATA_VENCIMENTO']         != nil  ,aAdd(aVetSE2,{'E2_VENCREA' ,sToD(oItemReq:data_vencimento)  ,NIL}),nil)
                 iif(oItemReq['FORMAPAGAMENTO']          != nil  ,aAdd(aVetSE2,{'E2_FORMPAG' ,oItemReq:formaPagamento    ,NIL}),nil)
-                iif(oItemReq['VALOR_TITULO']            != nil  ,aAdd(aVetSE2,{'E2_VALOR'   ,val(cValToChar(oItemReq:valor_titulo)),NIL}),nil)
-                iif(oItemReq['VALOR_TITULO']            != nil  ,aAdd(aVetSE2,{'E2_VLCRUZ'  ,val(cValToChar(oItemReq:valor_titulo)),NIL}),nil) 
-                iif(oItemReq['MOEDA']                   != nil  ,aAdd(aVetSE2,{'E2_MOEDA'   ,val(cValToChar(oItemReq:moeda)),NIL}),nil)
-                iif(oItemReq['PTAX']                    != nil  ,aAdd(aVetSE2,{'E2_TXMOEDA' ,val(cValToChar(oItemReq:ptax)),NIL}),nil)
+
+                If oItemReq['VALOR_TITULO'] != Nil
+                    nValorOrig := Val(cValToChar(oItemReq['VALOR_TITULO']))
+                EndIf
+                If oItemReq['PTAX'] != Nil
+                    nTaxaPtax := Val(cValToChar(oItemReq['PTAX']))
+                EndIf
+                If oItemReq['MOEDA'] != Nil
+                    nMoedaTit := Val(cValToChar(oItemReq['MOEDA']))
+                EndIf
+
+                If nMoedaTit != 1 .And. nTaxaPtax > 0
+                    nValorOrig := nValorOrig * nTaxaPtax
+                    nMoedaTit := 1
+                EndIf
+
+                If nValorOrig > 0
+                    AAdd(aVetSE2, {'E2_VALOR' , nValorOrig, NIL})
+                    AAdd(aVetSE2, {'E2_VLCRUZ', nValorOrig, NIL}) 
+                EndIf
+
+                AAdd(aVetSE2, {'E2_MOEDA'  , nMoedaTit, NIL})
+
+                If nTaxaPtax > 0
+                    AAdd(aVetSE2, {'E2_TXMOEDA', nTaxaPtax, NIL})
+                EndIf
+
                 iif(oItemReq['HISTORICO']               != nil  ,aAdd(aVetSE2,{'E2_HIST'    ,upper(oItemReq:historico)  ,NIL}),nil)
                 iif(oItemReq['ID_TITULO']               != nil, aAdd(aVetSE2,{'E2_ZZIDTIT'  ,upper(oItemReq['ID_TITULO'])       ,NIL}), nil)
                 iif(oItemReq['OPERACAO']                != nil, aAdd(aVetSE2,{'E2_ZZOPERA'  ,upper(oItemReq['OPERACAO'])        ,NIL}), nil)
@@ -148,7 +174,7 @@ Static Function gravaDados(oJsonReq)
                 iif(oItemReq['DIGITOAGENCIA']           != nil  ,aAdd(aVetSE2,{'E2_FAGEDV'  ,upper(oItemReq:digitoAgencia),NIL}),nil)
 
                                     
-                if val(cValToChar(oItemReq:moeda)) = '1' .or. val(cValToChar(oItemReq:ptax)) > 0
+                if val(cValToChar(oItemReq['MOEDA'])) == 1 .or. val(cValToChar(oItemReq['PTAX'])) > 0
                     Begin Transaction
                             lMsErroAuto := .F.
                             MsExecAuto( { |x,y,z| FINA050(x,y,z)}, aVetSE2,, 3)
@@ -157,27 +183,83 @@ Static Function gravaDados(oJsonReq)
                                 cMsgError := TrataLog(GetAutoGRLog())
                                 DisarmTransaction()
                             else
-                                //Gerar ZX5
+                                // Gerar ZX5 (Contrato Fixado -> Gera SE2 e ZX5)
+                                If oItemReq['ORIGEM'] != "MARKBROWSE"
+                                    RecLock("ZX5", .T.)
+                                    ZX5->ZX5_FILIAL := PadR(oItemReq['FILIAL_TITULO'], TamSx3("ZX5_FILIAL")[1])
+                                    iif(oItemReq['NUMERO_CONTRATO']     != nil, ZX5->ZX5_CODIGO   := upper(oItemReq['NUMERO_CONTRATO']), nil)                                
+                                    iif(oItemReq['PREFIXO_TITULO']      != nil, ZX5->ZX5_PREFIX  := upper(oItemReq['PREFIXO_TITULO'])  , nil)
+                                    iif(oItemReq['NUMERO_TITULO']       != nil, ZX5->ZX5_NUMERO  := upper(oItemReq['NUMERO_TITULO'])   , nil)
+                                    iif(oItemReq['PARCELA_TITULO']      != nil, ZX5->ZX5_PARCEL  := upper(oItemReq['PARCELA_TITULO'])  , nil)
+                                    iif(oItemReq['TIPO_TITULO']         != nil, ZX5->ZX5_TIPO    := upper(oItemReq['TIPO_TITULO'])     , nil)
+                                    
+                                    iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_FORNEC  := SA2->A2_COD  , nil)
+                                    iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_LOJA    := SA2->A2_LOJA , nil)
+                                    iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_NOMFOR  := SA2->A2_NOME , nil)
 
+                                    iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_FORTIT  := SA2->A2_COD  , nil)
+                                    iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_LJTIT   := SA2->A2_LOJA , nil)
+                                    iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_FORNOM  := SA2->A2_NOME , nil)
+
+
+                                    iif(oItemReq['DATA_EMISSAO']        != nil, ZX5->ZX5_EMISSA  := sToD(oItemReq['DATA_EMISSAO'])        , nil)
+                                    iif(oItemReq['DATA_VENCIMENTO']     != nil, ZX5->ZX5_VENCTO  := sToD(oItemReq['DATA_VENCIMENTO'])     , nil)
+                                    ZX5->ZX5_VLRTIT := nValorOrig
+                                    ZX5->ZX5_SALDO  := nValorOrig 
+                                    //iif(oItemReq['MOEDA']          != nil, ZX5->ZX5_MOEDA  := val(cValToChar(oItemReq['MOEDA']))    , nil)
+                                    //iif(oItemReq['PTAX']           != nil, ZX5->ZX5_PTAX   := val(cValToChar(oItemReq['PTAX']))     , nil)
+                                    ZX5->ZX5_STATUS := "2" 
+                                    ZX5->(MsUnlock())
+                                Endif
                             EndIf
 
                     End Transaction
                 Else
+                    Begin Transaction
+                        RecLock("ZX5", .T.)
+                        ZX5->ZX5_FILIAL := PadR(oItemReq['FILIAL_TITULO'], TamSx3("ZX5_FILIAL")[1])
+                        ZX5->ZX5_FILIAL := PadR(oItemReq['FILIAL_TITULO'], TamSx3("ZX5_FILIAL")[1])
+                        iif(oItemReq['NUMERO_CONTRATO']     != nil, ZX5->ZX5_CODIGO   := upper(oItemReq['NUMERO_CONTRATO']), nil)                                
+                        iif(oItemReq['PREFIXO_TITULO']      != nil, ZX5->ZX5_PREFIX      := upper(oItemReq['PREFIXO_TITULO'])  , nil)
+                        iif(oItemReq['NUMERO_TITULO']       != nil, ZX5->ZX5_NUMERO      := upper(oItemReq['NUMERO_TITULO'])   , nil)
+                        iif(oItemReq['PARCELA_TITULO']      != nil, ZX5->ZX5_PARCEL      := upper(oItemReq['PARCELA_TITULO'])  , nil)
+                        iif(oItemReq['TIPO_TITULO']         != nil, ZX5->ZX5_TIPO        := upper(oItemReq['TIPO_TITULO'])     , nil)
+                        
+                        iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_FORNEC      := SA2->A2_COD  , nil)
+                        iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_LOJA        := SA2->A2_LOJA , nil)
+                        iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_NOMFOR      := SA2->A2_NOME , nil)
 
+                        iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_FORTIT      := SA2->A2_COD  , nil)
+                        iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_LJTIT       := SA2->A2_LOJA , nil)
+                        iif(oItemReq['FORNECEDOR']          != nil, ZX5->ZX5_FORNOM      := SA2->A2_NOME , nil)
+
+
+                        iif(oItemReq['DATA_EMISSAO']        != nil, ZX5->ZX5_EMISSA      := sToD(oItemReq['DATA_EMISSAO'])        , nil)
+                        iif(oItemReq['DATA_VENCIMENTO']     != nil, ZX5->ZX5_VENCTO      := sToD(oItemReq['DATA_VENCIMENTO'])     , nil)
+                        ZX5->ZX5_VLRTIT := nValorOrig
+                        ZX5->ZX5_SALDO  := nValorOrig 
+                        //iif(oItemReq['MOEDA']                 != nil, ZX5->ZX5_MOEDA  := val(cValToChar(oItemReq['MOEDA']))    , nil)
+                        //iif(oItemReq['PTAX']                  != nil, ZX5->ZX5_PTAX   := val(cValToChar(oItemReq['PTAX']))     , nil)
+
+                        ZX5->ZX5_STATUS := "1" 
+                        ZX5->(MsUnlock())
+                    End Transaction
                 EndIF
             EndIf
             
-            // Monta o retorno isolado do item
             If Empty(cMsgError)
                 oItemRet['STATUS_CODE'] := "200"
-                oItemRet['MENSAGEM']    := "Titulo incluido com sucesso."
+                If val(cValToChar(oItemReq['MOEDA'])) == 1 .or. val(cValToChar(oItemReq['PTAX'])) > 0
+                    oItemRet['MENSAGEM'] := "Titulo e Previsao incluidos com sucesso."
+                Else
+                    oItemRet['MENSAGEM'] := "Previsao  incluida com sucesso. Titulo Pendente."
+                EndIf
             Else
                 oItemRet['STATUS_CODE'] := "400"
                 oItemRet['MENSAGEM']    := cMsgError
                 lRet := .F.
             EndIf
             
-            // Feedback dos dados base que foram tentados 
             oItemRet['FILIAL_TITULO']       := IIf(oItemReq['FILIAL_TITULO']    != Nil, oItemReq['FILIAL_TITULO']   , "")
             oItemRet['NUMERO_TITULO']       := IIf(oItemReq['NUMERO_TITULO']    != Nil, oItemReq['NUMERO_TITULO']   , "")
             oItemRet['PREFIXO_TITULO']      := IIf(oItemReq['PREFIXO_TITULO']   != Nil, oItemReq['PREFIXO_TITULO']  , "")
@@ -229,7 +311,6 @@ WSMETHOD PUT AlterarTitulo WSRECEIVE id WSSERVICE ContasPagar
     Local cQuery     := ""
     Local cAlias     := GetNextAlias()
 
-    // Variáveis Privadas obrigatórias
     Private lAutoErrNoFile := .T.
     Private lMsHelpAuto    := .T.
     Private lMsErroAuto    := .F.
@@ -249,7 +330,6 @@ WSMETHOD PUT AlterarTitulo WSRECEIVE id WSSERVICE ContasPagar
         Return .F.
     EndIf
 
-    // Busca o RECNO do título utilizando a chave externa (E2_XIDSP)
     cQuery := "SELECT R_E_C_N_O_ AS RECNO_SE2 "
     cQuery += "FROM " + RetSqlName("SE2") + " SE2 "
     cQuery += "WHERE E2_ZZIDTIT = '" + ::id  + "' "
@@ -261,10 +341,8 @@ WSMETHOD PUT AlterarTitulo WSRECEIVE id WSSERVICE ContasPagar
 
     If !(cAlias)->(Eof())
         DbSelectArea("SE2")
-        // Posiciona a SE2 fisicamente, ignorando índices
         SE2->(DbGoTo((cAlias)->RECNO_SE2))
 
-        // Chaves obrigatórias para o ExecAuto encontrar o registro posicionado
         AAdd(aVetSE2, {"E2_FILIAL" , SE2->E2_FILIAL , Nil})
         AAdd(aVetSE2, {"E2_PREFIXO", SE2->E2_PREFIXO, Nil})
         AAdd(aVetSE2, {"E2_NUM"    , SE2->E2_NUM    , Nil})
@@ -273,7 +351,6 @@ WSMETHOD PUT AlterarTitulo WSRECEIVE id WSSERVICE ContasPagar
         AAdd(aVetSE2, {"E2_FORNECE", SE2->E2_FORNECE, Nil})
         AAdd(aVetSE2, {"E2_LOJA"   , SE2->E2_LOJA   , Nil})
 
-        // ARRAY DINÂMICO: Atualiza apenas o que vier no JSON de PUT
         If !Empty(cJson)
             iif(oJsonReq['NATUREZA']   != nil, aAdd(aVetSE2, {'E2_NATUREZ', upper(oJsonReq['NATUREZA'])  , NIL}), nil)
             iif(oJsonReq['DATA_VENCIMENTO'] != nil, aAdd(aVetSE2, {'E2_VENCTO' , sToD(oJsonReq['DATA_VENCIMENTO']) , NIL}), nil)
@@ -288,7 +365,7 @@ WSMETHOD PUT AlterarTitulo WSRECEIVE id WSSERVICE ContasPagar
         If Len(aVetSE2) > 7 
             Begin Transaction
                 lMsErroAuto := .F.
-                MsExecAuto({|x,y,z| FINA050(x,y,z)}, aVetSE2,, 4) // 4 = Alteração
+                MsExecAuto({|x,y,z| FINA050(x,y,z)}, aVetSE2,, 4) 
 
                 If lMsErroAuto
                     cMsgError := TrataLog(GetAutoGRLog())

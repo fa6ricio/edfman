@@ -85,7 +85,7 @@ Static Function gravaDados(oJsonReq)
     Local cMsgError := ""
     Local lRet      := .T.  
 
-    // Verifica se a tag principal existe e é um array
+
     If oJsonReq['CONTRATOS'] != Nil .And. ValType(oJsonReq['CONTRATOS']) == "A"
         
         DbSelectArea("ZX3")
@@ -96,7 +96,6 @@ Static Function gravaDados(oJsonReq)
             oItemRet  := JsonObject():New()
             oItemReq  := oJsonReq:GetJsonObject("CONTRATOS")[nRecord]
             
-            // Validação de chaves primárias
             If oItemReq['FILIAL_TITULO'] == Nil .Or. Empty(oItemReq['FILIAL_TITULO']) .Or. ;
                oItemReq['CODIGO'] == Nil .Or. Empty(oItemReq['CODIGO'])
                 cMsgError := "As chaves FILIAL_TITULO e CODIGO sao obrigatorias."
@@ -109,11 +108,9 @@ Static Function gravaDados(oJsonReq)
                         
                         RecLock("ZX3", .T.) 
                         
-                        // Chaves Principais
                         ZX3->ZX3_FILIAL := PadR(upper(oItemReq['FILIAL_TITULO']), TamSx3("ZX3_FILIAL")[1])
                         ZX3->ZX3_CODIGO := PadR(upper(oItemReq['CODIGO'])       , TamSx3("ZX3_CODIGO")[1])
                         
-                        // Tratamento do Fornecedor posicionando na SA2
                         If oItemReq['FORNECEDOR'] != nil
                             DbSelectArea("SA2")
                             SA2->(DbSetOrder(12))   
@@ -130,7 +127,6 @@ Static Function gravaDados(oJsonReq)
                         iif(oItemReq['MOEDA']          != nil, ZX3->ZX3_MOEDA  := upper(oItemReq['MOEDA'])                , nil)
                         iif(oItemReq['MOEDAPAGAMENTO'] != nil, ZX3->ZX3_MOEPG  := upper(oItemReq['MOEDAPAGAMENTO'])       , nil)
 
-						// Tratamento do Fornecedor posicionando na SB1
                         If oItemReq['PRODUTO'] != nil
                             DbSelectArea("SB1")
                             SB1->(DbSetOrder(1))   
@@ -149,7 +145,6 @@ Static Function gravaDados(oJsonReq)
 
                         ZX3->(MsUnlock())
                         
-                        // Gravação da Tabela Filha (Parceiros - ZX6)
                         If oItemReq['PARCEIROS'] != Nil .And. ValType(oItemReq['PARCEIROS']) == "A"
                             For nParc := 1 To Len(oItemReq:GetJsonObject("PARCEIROS"))
                                 oParceiro := oItemReq:GetJsonObject("PARCEIROS")[nParc]
@@ -157,12 +152,10 @@ Static Function gravaDados(oJsonReq)
                                 If oParceiro['CODPAR'] != Nil
                                     RecLock("ZX6", .T.)
                                     
-                                    // Chaves de Ligação Relacional com o Cabecalho
                                     ZX6->ZX6_FILIAL := PadR(upper(oItemReq['FILIAL_TITULO']), TamSx3("ZX6_FILIAL")[1])
                                     ZX6->ZX6_CODIGO := PadR(upper(oItemReq['CODIGO'])       , TamSx3("ZX6_CODIGO")[1])
                                     ZX6->ZX6_ITEM   := StrZero(nParc, TamSx3("ZX6_ITEM")[1])
                                     
-                                    // Valida o Parceiro na SA2
                                     DbSelectArea("SA2")
                                     SA2->(DbSetOrder(12)) 
                                     If SA2->(DbSeek(xFilial("SA2") + oParceiro['CODPAR']))
@@ -170,7 +163,6 @@ Static Function gravaDados(oJsonReq)
                                         ZX6->ZX6_LOJA   := SA2->A2_LOJA
                                         ZX6->ZX6_NOMFOR := SA2->A2_NOME
                                     Else
-                                        // Tratamento paliativo caso o fornecedor nao exista (Grava truncado)
                                         ZX6->ZX6_FORNEC := PadR(oParceiro['CODPAR'], TamSx3("ZX6_FORNEC")[1])
                                     EndIf
                                     
@@ -183,7 +175,6 @@ Static Function gravaDados(oJsonReq)
                 EndIf
             EndIf
             
-            // Monta o retorno isolado do item
             If Empty(cMsgError)
                 oItemRet['STATUS_CODE'] := "200"
                 oItemRet['MENSAGEM']    := "Contrato e Parceiros incluidos com sucesso."
@@ -240,14 +231,12 @@ WSMETHOD PUT AlterarContrato WSRECEIVE id WSSERVICE ContratosAlg
         Return .F.
     EndIf
 
-    // Isola o objeto do array 
     If oJsonReq['CONTRATOS'] != Nil .And. ValType(oJsonReq['CONTRATOS']) == "A" .And. Len(oJsonReq:GetJsonObject("CONTRATOS")) > 0
         oItemReq := oJsonReq:GetJsonObject("CONTRATOS")[1]
     Else
         oItemReq := oJsonReq 
     EndIf
 
-    // Busca o RECNO do contrato na ZX3
     cQuery := "SELECT R_E_C_N_O_ AS RECNO_ZX3, ZX3_FILIAL, ZX3_CODIGO "
     cQuery += "FROM " + RetSqlName("ZX3") + " ZX3 "
     cQuery += "WHERE ZX3_CODIGO = '" + ::id + "' "
@@ -265,7 +254,6 @@ WSMETHOD PUT AlterarContrato WSRECEIVE id WSSERVICE ContratosAlg
             
             RecLock("ZX3", .F.) 
             
-            // Tratamento do Fornecedor na SA2
             If oItemReq['FORNECEDOR'] != nil
                 DbSelectArea("SA2")
                 SA2->(DbSetOrder(12))   
@@ -276,7 +264,6 @@ WSMETHOD PUT AlterarContrato WSRECEIVE id WSSERVICE ContratosAlg
                 EndIf
             EndIf
 
-            // Tratamento do Produto na SB1
             If oItemReq['PRODUTO'] != nil
                 DbSelectArea("SB1")
                 SB1->(DbSetOrder(1))   
@@ -301,10 +288,10 @@ WSMETHOD PUT AlterarContrato WSRECEIVE id WSSERVICE ContratosAlg
 
             ZX3->(MsUnlock())
 
-            // Tratamento da Tabela Filha (Parceiros) - Substituição Completa se enviado
+
             If oItemReq['PARCEIROS'] != Nil .And. ValType(oItemReq['PARCEIROS']) == "A"
                 
-                // 1. Exclui os parceiros antigos deste contrato
+
                 cQueryZX6 := "SELECT R_E_C_N_O_ AS RECNO_ZX6 FROM " + RetSqlName("ZX6") + " "
                 cQueryZX6 += "WHERE ZX6_CODIGO = '" + ZX3->ZX3_CODIGO + "' AND ZX6_FILIAL = '" + ZX3->ZX3_FILIAL + "' AND D_E_L_E_T_ = ' ' "
                 cQueryZX6 := ChangeQuery(cQueryZX6)
@@ -320,7 +307,6 @@ WSMETHOD PUT AlterarContrato WSRECEIVE id WSSERVICE ContratosAlg
                 EndDo
                 (cAliasZX6)->(DbCloseArea())
 
-                // 2. Insere os novos parceiros recebidos no JSON
                 For nParc := 1 To Len(oItemReq:GetJsonObject("PARCEIROS"))
                     oParceiro := oItemReq:GetJsonObject("PARCEIROS")[nParc]
                     
@@ -385,7 +371,6 @@ WSMETHOD DELETE ExcluirContrato WSRECEIVE id WSSERVICE ContratosAlg
         Return .F.
     EndIf
 
-    // Busca o RECNO do contrato na ZX3
     cQuery := "SELECT R_E_C_N_O_ AS RECNO_ZX3, ZX3_FILIAL, ZX3_CODIGO "
     cQuery += "FROM " + RetSqlName("ZX3") + " ZX3 "
     cQuery += "WHERE ZX3_CODIGO = '" + ::id + "' "
@@ -398,8 +383,7 @@ WSMETHOD DELETE ExcluirContrato WSRECEIVE id WSSERVICE ContratosAlg
     If !(cAlias)->(Eof())
         
         Begin Transaction
-            
-            // 1. Apaga o Cabeçalho (ZX3)
+
             DbSelectArea("ZX3")
             ZX3->(DbGoTo((cAlias)->RECNO_ZX3))
             
@@ -407,7 +391,7 @@ WSMETHOD DELETE ExcluirContrato WSRECEIVE id WSSERVICE ContratosAlg
             ZX3->(DbDelete())
             ZX3->(MsUnlock())
 
-            // 2. Apaga os Filhos (ZX6) em cascata
+
             cQueryZX6 := "SELECT R_E_C_N_O_ AS RECNO_ZX6 FROM " + RetSqlName("ZX6") + " "
             cQueryZX6 += "WHERE ZX6_CODIGO = '" + ZX3->ZX3_CODIGO + "' AND ZX6_FILIAL = '" + ZX3->ZX3_FILIAL + "' AND D_E_L_E_T_ = ' ' "
             cQueryZX6 := ChangeQuery(cQueryZX6)

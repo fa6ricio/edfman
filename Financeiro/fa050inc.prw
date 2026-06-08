@@ -29,7 +29,7 @@ User Function FA050INC()
 Local aArea		:= GetArea()
 Local lRet  	:= .t.
 Local cGrupo	:= GetAdvFVal("SA2","A2_XDESCGR",xFilial("SA2")+M->E2_FORNECE+M->E2_LOJA, 1, " " )
-Local lTxMoeda 	:= IIf(Posicione(("SM2"),1,dDataBase,"M2_MOEDA2") == 0, .F.,.T.)
+Local lTxMoeda 	:= .T.//IIf(Posicione(("SM2"),1,dDataBase,"M2_MOEDA2") == 0, .F.,.T.)
 Local cQry 		:= ""
 Local cAlias 	:= GetNextAlias()
 

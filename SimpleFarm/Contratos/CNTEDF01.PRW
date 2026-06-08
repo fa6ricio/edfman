@@ -45,14 +45,14 @@ Static Function MenuDef()
 
 Local aMenu :=	{}
 
-	ADD OPTION aMenu TITLE 'Pesquisar'  ACTION 'PesqBrw'       		OPERATION 1 ACCESS 0
-	ADD OPTION aMenu TITLE 'Visualizar' ACTION 'VIEWDEF.CNTEDF01'	OPERATION 2 ACCESS 0
-	ADD OPTION aMenu TITLE 'Incluir'    ACTION 'VIEWDEF.CNTEDF01' 	OPERATION 3 ACCESS 0
-	ADD OPTION aMenu TITLE 'Alterar'    ACTION 'VIEWDEF.CNTEDF01' 	OPERATION 4 ACCESS 0
-	ADD OPTION aMenu TITLE 'Excluir'    ACTION 'VIEWDEF.CNTEDF01' 	OPERATION 5 ACCESS 0
-	ADD OPTION aMenu TITLE 'Imprimir'   ACTION 'VIEWDEF.CNTEDF01'	OPERATION 8 ACCESS 0
-	ADD OPTION aMenu TITLE 'Copiar'     ACTION 'VIEWDEF.CNTEDF01'	OPERATION 9 ACCESS 0
-	ADD OPTION aMenu TITLE 'Gerar Titulos'     ACTION 'U_XXXX'	OPERATION 9 ACCESS 0
+	ADD OPTION aMenu TITLE 'Pesquisar'  		ACTION 'PesqBrw'       		            OPERATION 1 ACCESS 0
+	ADD OPTION aMenu TITLE 'Visualizar' 		ACTION 'VIEWDEF.CNTEDF01'	            OPERATION 2 ACCESS 0
+	ADD OPTION aMenu TITLE 'Incluir'    		ACTION 'VIEWDEF.CNTEDF01' 	            OPERATION 3 ACCESS 0
+	ADD OPTION aMenu TITLE 'Alterar'    		ACTION 'VIEWDEF.CNTEDF01' 	            OPERATION 4 ACCESS 0
+	ADD OPTION aMenu TITLE 'Excluir'    		ACTION 'VIEWDEF.CNTEDF01' 	            OPERATION 5 ACCESS 0
+	ADD OPTION aMenu TITLE 'Imprimir'   		ACTION 'VIEWDEF.CNTEDF01'	            OPERATION 8 ACCESS 0
+	ADD OPTION aMenu TITLE 'Copiar'     		ACTION 'VIEWDEF.CNTEDF01'	            OPERATION 9 ACCESS 0
+	ADD OPTION aMenu TITLE 'Gerar Titulos'     ACTION 'U_GeraMkZX5("","","")'           OPERATION 10 ACCESS 0
 
 Return(aMenu)
 
@@ -94,6 +94,22 @@ Static Function ModelDef()
 	NIL , ;                       // [13] L Indica se o campo pode receber valor em uma operação de update.
 	.T. )                         // [14] L Indica se o campo é virtual 
 
+    oStruZX5:AddField( ;
+    'Acao' , ;                      // [01] C Titulo do campo
+    'Duplo clique para Gerar' , ;   // [02] C ToolTip do campo
+    'ZX5_GERAR' , ;                 // [03] C identificador (ID) do Field
+    'C' , ;                         // [04] C Tipo do campo
+    10 , ;                          // [05] N Tamanho do campo (O NUMERO QUE O PROTHEUS ESPERAVA)
+    0 , ;                           // [06] N Decimal do campo
+    NIL , ;                         // [07] B Code-block de validação do campo
+    NIL , ;                         // [08] B Code-block de validação When do campo
+    NIL , ;                         // [09] A Lista de valores permitido do campo
+    NIL , ;                         // [10] L Indica se o campo tem preenchimento obrigatório
+    { || Iif(ZX5->ZX5_STATUS == "2", "LBTIK", "LBOK") } ,;               // [11] B Code-block de inicializacao do campo (Icone)
+    NIL , ;                         // [12] L Indica se trata de um campo chave
+    NIL , ;                         // [13] L Indica se o campo pode receber valor
+    .T. )                           // [14] L Indica se o campo é virtual
+
 
 	oModel	:=	MpFormModel():New('zCNE01',/*Pre-Validacao*/,/*Pos-Validacao*/,/*Commit*/,/*Commit*/,/*Cancel*/)
 	oModel:AddFields('ID_M_FLD_ZX3', /*cOwner*/, oStruZX3, /*bPreValidacao*/, /*bPosValidacao*/, /*bCarga*/ )
@@ -104,8 +120,6 @@ Static Function ModelDef()
 
 	oModel:SetRelation( 'ID_M_GRD_ZX4', {{'ZX4_FILIAL','xFilial("ZX4")'},{'ZX4_CODIGO','ZX3_CODIGO'}}, ZX4->(IndexKey(1)))
 	oModel:SetRelation( 'ID_M_GRD_ZX5', {{'ZX5_FILIAL','xFilial("ZX4")'},{'ZX5_CODIGO','ZX3_CODIGO'}}, ZX5->(IndexKey(1)))
-	//oModel:SetRelation( 'ID_M_GRD_ZX5', {{'ZX5_FILIAL','xFilial("ZX5")'},{'ZX5_CODIGO','ZX4_CODIGO'},{'ZX5_NF','ZX4_NF'},;
-	//									 {'ZX5_SERIE','ZX4_SERIE'}}, ZX5->(IndexKey(1)))
 	oModel:SetRelation( 'ID_M_GRD_ZX6', {{'ZX6_FILIAL','xFilial("ZX6")'},{'ZX6_CODIGO','ZX3_CODIGO'}}, ZX6->(IndexKey(1)))
 
 
@@ -170,6 +184,28 @@ Static Function ViewDef()
 	NIL                             , ;     // [17] C   Picture Variavel
 	NIL                             )       // [18] L   Indica pulo de linha após o campo 
 
+    oStruZX5:AddField( ;
+    'ZX5_GERAR' , ;                 // [01] C   Nome do Campo
+    "01" , ;                        // [02] C   Ordem
+    'Gerar' , ;                     // [03] C   Titulo do campo
+    'Gerar Titulo' , ;              // [04] C   Descricao do campo
+    {'Duplo clique para gerar'} , ; // [05] A   Array com Help (O ARRAY QUE DEU CONFLITO)
+    'C' , ;                         // [06] C   Tipo do campo
+    '@BMP' , ;                      // [07] C   Picture
+    NIL , ;                         // [08] B   Bloco de Picture Var
+    '' , ;                          // [09] C   Consulta F3
+    .F. , ;                         // [10] L   Indica se o campo é alteravel
+    NIL , ;                         // [11] C   Pasta do campo
+    NIL , ;                         // [12] C   Agrupamento do campo
+    NIL , ;                         // [13] A   Lista de valores permitido do campo (Combo)
+    NIL , ;                         // [14] N   Tamanho maximo da maior opção do combo
+    NIL , ;                         // [15] C   Inicializador de Browse
+    .T. , ;                         // [16] L   Indica se o campo é virtual
+    NIL , ;                         // [17] C   Picture Variavel
+    NIL )                           // [18] L   Indica pulo de linha após o campo
+
+    
+
 
  	oView:SetModel(oModel)
 	oView:AddField( 'ID_V_FLD_ZX3', oStruZX3, 'ID_M_FLD_ZX3')
@@ -178,8 +214,7 @@ Static Function ViewDef()
 	oView:AddGrid(  'ID_V_GRD_ZX6', oStruZX6, 'ID_M_GRD_ZX6')
 
 
-	oView:AddUserButton( 'Gerar Titulo', 'CLIPS', {|oView| TT003()} )
-	//oView:AddUserButton( 'Gerar Solicitacao', 'CLIPS', {|oView| GERASOLIC()} )
+	oView:AddUserButton( 'Gerar Titulos', 'CLIPS', {|oView| U_GeraMkZX5()} )
 	
 
 	oView:CreateHorizontalBox( 'ID_HBOX_40', 40 )
@@ -211,7 +246,12 @@ Static Function ViewDef()
 
 	oView:SetViewProperty("ID_V_GRD_ZX5", "GRIDSEEK", {.T.})
 	oView:SetViewProperty("ID_V_GRD_ZX5", "GRIDFILTER", {.T.})
-	oView:SetViewProperty("ID_V_GRD_ZX5", "GRIDDOUBLECLICK", {{|oFormulario,cFieldName,nLineGrid,nLineModel| Iif(Alltrim(cFieldName) == "ZX5_LEGEND",TT002(),TT002())}})
+    oView:SetViewProperty("ID_V_GRD_ZX5", "GRIDDOUBLECLICK", {{|oFormulario, cFieldName, nLineGrid, nLineModel| ;
+        Iif(Alltrim(cFieldName) == "ZX5_LEGEND", TT002(), ;
+        Iif(Alltrim(cFieldName) == "ZX5_GERAR", ;
+            U_GeraMkZX5( oFormulario:GetModel('ID_M_GRD_ZX5'):GetValue('ZX5_NUMERO'), ;
+                         oFormulario:GetModel('ID_M_GRD_ZX5'):GetValue('ZX5_PARCEL'), ;
+                         oFormulario:GetModel('ID_M_GRD_ZX5'):GetValue('ZX5_STATUS') ), Nil)) }})
 
 
 	oView:EnableTitleView('ID_V_FLD_ZX3'	, 'Contratos Algodao' )
@@ -230,25 +270,20 @@ Return(oView)
 
 Static Function TT002()
 
-// Cria a legenda que identifica a estrutura
 oLegend := FWLegend():New()
 
-// Adiciona descrição para cada legenda
 oLegend:Add( { || }, 'BR_BRANCO'   , 'Pagamento Antecipado' ) 
 oLegend:Add( { || }, 'BR_PRETO'    , 'Pagamento de Nota' ) 
 oLegend:Add( { || }, 'BR_AMARELO'  , 'Cessao de Credito' )
 
 
-// Ativa a Legenda
 oLegend:Activate()
 
-// Exibe a Tela de Legendas
 oLegend:View()
 
 Return Nil
 
 
-//Rotina para visuaalizar o titulo 
 Static Function TT003()
 
 	Local oModel     	:= FWModelActive()
@@ -263,3 +298,335 @@ Static Function TT003()
 	EndIf
 
 Return()
+
+/*
+______________________________________________________________________________
+| Função    | U_GeraMkZX5                                                     |
+| Descrição | Tela de MarkBrowse para selecionar títulos pós-fixados (ZX5)    |
+|           | pendentes de geração na SE2.                                    |
+|___________|_________________________________________________________________|
+*/
+User Function GeraMkZX5(cTitNum, cTitParc, cTitStatus)
+    Local oMark
+    Local oDlg
+    Local cAliasTRB  := GetNextAlias()
+    Local cAliasQry  := GetNextAlias()
+    Local aCampos    := {}
+    Local cQuery     := ""
+    Local oTempTable
+    Local lConfirm   := .F.
+    Local cMarca     := GetMark() 
+    Local lIsAltera  := .F. 
+    Local lDireto    := .F.
+    
+    Local aParam     := {}
+    Local cFilde     := Space(Tamsx3("ZX5_FILIAL")[1])
+    Local cFilAte    := Replicate("Z",Tamsx3("ZX5_FILIAL")[1])
+
+    Local cFornDe    := Space(TamSx3("ZX5_FORNEC")[1])
+    Local cLojde     := Space(Tamsx3("ZX5_LOJA")[1])
+    Local cFornAte   := Replicate("Z", TamSx3("ZX5_FORNEC")[1])
+    Local cLojAte    := Replicate("Z",Tamsx3("ZX5_LOJA")[1])
+    Local cContrDe   := Space(TamSx3("ZX5_CODIGO")[1])
+    Local cContrAte  := Replicate("Z", TamSx3("ZX5_CODIGO")[1])
+    Local dVenctoDe  := CTOD("")
+    Local dVenctoAte := LastDate(Date())
+
+    Default cTitNum    := ""
+    Default cTitParc   := ""
+    Default cTitStatus := ""
+
+    If !Empty(cTitNum) 
+        If cTitStatus == "2"
+            MsgInfo("Este título já foi gerado no Contas a Pagar.", "Aviso")
+            Return .F.
+        EndIf
+        lDireto := .T. 
+    EndIf
+
+    If Type("ALTERA") == "L" 
+        lIsAltera := ALTERA
+    EndIf
+
+    If lIsAltera
+        If Empty(ZX3->ZX3_CODIGO)
+            MsgAlert("Posicione em um contrato válido para gerar os títulos.", "Atenção")
+            Return
+        EndIf
+    Else
+        aAdd(aParam, {1, "Filial De"       , cFilde        , "", "", "SM0", "", 80, .F.})
+        aAdd(aParam, {1, "Filial Até"      , cFilAte       , "", "", "SM0", "", 80, .F.})
+        aAdd(aParam, {1, "Fornecedor De"   , cFornDe       , "", "", "SA2", "", 80, .F.})
+        aAdd(aParam, {1, "Loja De"         , cLojde        , "", "", "SA2", "", 80, .F.})        
+        aAdd(aParam, {1, "Fornecedor Até"  , cFornAte      , "", "", "SA2", "", 80, .F.})
+        aAdd(aParam, {1, "Loja Até"        , cLojAte       , "", "", "SA2", "", 80, .F.})        
+        aAdd(aParam, {1, "Contrato De"     , cContrDe      , "", "", "ZX3", "", 80, .F.})
+        aAdd(aParam, {1, "Contrato Até"    , cContrAte     , "", "", "ZX3", "", 80, .F.})
+
+        aAdd(aParam, {1, "Vencto De"        , dVenctoDe     ,  "", ".T.", "", ".T.", 80,  .F.})
+        aAdd(aParam, {1, "Vencto Até"       , dVenctoAte    ,  "", ".T.", "", ".T.", 80,  .F.})
+
+        If ParamBox(aParam, "Filtros para Geracao de Titulos",)
+            cFilde      := MV_PAR01
+            cFilAte     := MV_PAR02
+            cFornDe     := MV_PAR03
+            cLojde      := MV_PAR04
+            cFornAte    := MV_PAR05
+            cLojAte     := MV_PAR06
+            cContrDe    := MV_PAR07
+            cContrAte   := MV_PAR08
+            dVenctoDe   := MV_PAR09
+            dVenctoAte  := MV_PAR10
+        Else
+            Return
+        EndIf
+    EndIf
+
+    oTempTable := FWTemporaryTable():New(cAliasTRB)
+
+    AAdd(aCampos, {"OK"         , "C", 2                        , 0})
+    AAdd(aCampos, {"REC_ZX5"    , "N", 15                       , 0})
+    AAdd(aCampos, {"ZX5_PARCEL" , "C", TamSx3("ZX5_PARCEL")[1]  , 0})
+    AAdd(aCampos, {"ZX5_NUMERO" , "C", TamSx3("ZX5_NUMERO")[1]  , 0})
+    AAdd(aCampos, {"ZX5_CODIGO" , "C", TamSx3("ZX5_CODIGO")[1]  , 0})
+    AAdd(aCampos, {"ZX5_FORNEC" , "C", TamSx3("ZX5_FORNEC")[1]  , 0})
+    AAdd(aCampos, {"ZX5_LOJA"   , "C", TamSx3("ZX5_LOJA")[1]    , 0})
+    AAdd(aCampos, {"ZX5_VLRTIT" , "N", TamSx3("ZX5_VLRTIT")[1]  , TamSx3("ZX5_VLRTIT")[2]})
+    AAdd(aCampos, {"ZX5_VENCTO" , "D", TamSx3("ZX5_VENCTO")[1]  ,0})
+
+    oTempTable:SetFields(aCampos)
+    oTempTable:Create()
+
+    cQuery := "SELECT R_E_C_N_O_ AS RECNO_ZX5, ZX5_PARCEL, ZX5_NUMERO, ZX5_FORNEC, ZX5_LOJA, ZX5_VLRTIT, ZX5_VENCTO, ZX5_CODIGO "
+    cQuery += " FROM " + RetSqlName("ZX5")
+ 
+    If lIsAltera
+        cQuery += " WHERE ZX5_FILIAL = '" + xFilial("ZX5") + "' " 
+        cQuery += " AND ZX5_CODIGO = '" + ZX3->ZX3_CODIGO + "' "
+    Else
+        cQuery += " WHERE ZX5_FILIAL >= '" + cFilde   + "' AND ZX5_FILIAL <= '" + cFilAte  + "' "
+        cQuery += " AND ZX5_FORNEC >= '" + cFornDe  + "' AND ZX5_FORNEC <= '" + cFornAte  + "' "
+        cQuery += " AND ZX5_LOJA   >= '" + cLojde   + "' AND ZX5_LOJA   <= '" + cLojAte  + "' "
+        cQuery += " AND ZX5_CODIGO >= '" + cContrDe + "' AND ZX5_CODIGO <= '" + cContrAte + "' "
+
+        cQuery += " AND ZX5_VENCTO >= '" + DtoS(dVenctoDe) + "' AND ZX5_VENCTO <= '" + DtoS(dVenctoAte) + "' "     
+                         
+    EndIf
+
+    If !Empty(cTitNum)
+        cQuery += " AND ZX5_NUMERO = '" + cTitNum + "' "
+        cQuery += " AND ZX5_PARCEL = '" + cTitParc + "' "
+    EndIf
+    
+    cQuery += " AND ZX5_STATUS = '1' " 
+    cQuery += " AND D_E_L_E_T_ = ' ' "
+
+    cQuery := ChangeQuery(cQuery)
+    TCQuery cQuery New Alias (cAliasQry)
+
+    While !(cAliasQry)->(Eof())
+        RecLock(cAliasTRB, .T.)
+        
+        (cAliasTRB)->OK         := Iif(lDireto, cMarca, "") 
+        
+        (cAliasTRB)->REC_ZX5    := (cAliasQry)->RECNO_ZX5
+        (cAliasTRB)->ZX5_FORNEC := (cAliasQry)->ZX5_FORNEC
+        (cAliasTRB)->ZX5_LOJA   := (cAliasQry)->ZX5_LOJA
+        (cAliasTRB)->ZX5_CODIGO := (cAliasQry)->ZX5_CODIGO        
+        (cAliasTRB)->ZX5_NUMERO := (cAliasQry)->ZX5_NUMERO
+        (cAliasTRB)->ZX5_PARCEL := (cAliasQry)->ZX5_PARCEL        
+        (cAliasTRB)->ZX5_VLRTIT := (cAliasQry)->ZX5_VLRTIT
+        (cAliasTRB)->ZX5_VENCTO := Stod((cAliasQry)->ZX5_VENCTO)
+        (cAliasTRB)->(MsUnlock())
+        
+        (cAliasQry)->(DbSkip())
+    EndDo
+    (cAliasQry)->(DbCloseArea())
+
+    (cAliasTRB)->(DbGoTop())
+    If (cAliasTRB)->(Eof())
+        MsgInfo("Não há títulos pendentes de geração para este(s) contrato(s).", "Aviso")
+        oTempTable:Delete()
+        Return
+    EndIf
+
+    
+    If lDireto
+
+        If MsgNoYes("Confirma a geração do título " + AllTrim(cTitNum) + " (Parcela " + AllTrim(cTitParc) + ") no Contas a Pagar?", "Atenção")
+            ExecMarca(cAliasTRB, cMarca)
+        Else
+            MsgInfo("Geração de títulos cancelada pelo usuário.", "Cancelado")
+        Endif
+    Else
+
+        DEFINE MSDIALOG oDlg TITLE "Geracao de Titulos a Pagar (Pos-Fixados)" FROM 000, 000 TO 400, 800 PIXEL
+
+        oMark := FWMarkBrowse():New()
+        oMark:SetOwner(oDlg) 
+        oMark:SetAlias(cAliasTRB)
+        oMark:SetDescription("Titulos Encontrados")
+        oMark:SetFieldMark("OK")
+        oMark:Mark(cMarca)
+        oMark:SetMenuDef("U_MnuVazio")
+        oMark:DisableReport()
+        oMark:DisableConfig()
+
+        oMark:oBrowse:AddColumn( {"Fornecedor"  , {|| (cAliasTRB)->ZX5_FORNEC}, "C", "", 0, TamSx3("ZX5_FORNEC")[1], 0                        , .F.} )
+        oMark:oBrowse:AddColumn( {"Loja"        , {|| (cAliasTRB)->ZX5_LOJA}  , "C", "", 0, TamSx3("ZX5_LOJA")[1]  , 0                        , .F.} )
+        oMark:oBrowse:AddColumn( {"Contrato"    , {|| (cAliasTRB)->ZX5_CODIGO}, "C", "", 0, TamSx3("ZX5_CODIGO")[1], 0                        , .F.} )
+        oMark:oBrowse:AddColumn( {"Numero"      , {|| (cAliasTRB)->ZX5_NUMERO}, "C", "", 0, TamSx3("ZX5_NUMERO")[1], 0                        , .F.} )        
+        oMark:oBrowse:AddColumn( {"Parcela"     , {|| (cAliasTRB)->ZX5_PARCEL}, "C", "", 0, TamSx3("ZX5_PARCEL")[1], 0                        , .F.} )
+        oMark:oBrowse:AddColumn( {"Valor"       , {|| (cAliasTRB)->ZX5_VLRTIT}, "N", "", 0, TamSx3("ZX5_VLRTIT")[1], TamSx3("ZX5_VLRTIT")[2]  , .F.} )
+        oMark:oBrowse:AddColumn( {"Vencimento"  , {|| (cAliasTRB)->ZX5_VENCTO}, "D", "", 0, TamSx3("ZX5_VENCTO")[1], 0                        , .F.} )
+
+        oMark:Activate()
+
+        oDlg:lMaximized := .T.
+
+        ACTIVATE MSDIALOG oDlg CENTERED ;
+            ON INIT EnchoiceBar(oDlg, {|| lConfirm := .T., oDlg:End() }, {|| lConfirm := .F., oDlg:End() })
+
+        If lConfirm
+            ExecMarca(cAliasTRB, cMarca)
+        EndIf
+    EndIf
+    
+    // Limpeza
+    oTempTable:Delete()
+
+Return
+
+/*
+______________________________________________________________________________
+| Função    | ExecMarca                                                       |
+| Descrição | Processa as marcações do MarkBrowse, monta o JSON e invoca a    |
+|           | rotina original gravaDados()                                    |
+|___________|_________________________________________________________________|
+*/
+Static Function ExecMarca(cAliasTRB, cMarca)
+    Local oJsonReq  := JsonObject():New()
+    Local aInclui   := {}
+    Local oItem
+    Local nGerados  := 0
+    Local aRet
+
+    Local aParam    := {}
+    Local nTaxaPtax := 0
+
+    Local dDataD1   := dDataBase - 1 
+    Local nTxDolar  := 0
+
+    (cAliasTRB)->(DbGoTop())
+    While !(cAliasTRB)->(Eof())
+        If (cAliasTRB)->OK <> " " 
+            nGerados++
+        EndIf
+        (cAliasTRB)->(DbSkip())
+    EndDo
+
+    If nGerados == 0
+        MsgAlert("Nenhum título foi selecionado. A geração não será realizada.", "Atenção")
+        Return .F.
+    EndIf
+
+    DbSelectArea("SM2")
+    SM2->(DbSetOrder(1)) 
+    SM2->(DbSeek(DtoS(dDataD1), .T.))
+    
+    If SM2->(Eof()) .Or. SM2->M2_DATA > dDataD1
+        SM2->(DbSkip(-1))
+    EndIf
+    
+    If !SM2->(Bof()) .And. !Empty(SM2->M2_DATA)
+        nTxDolar := SM2->M2_MOEDA2
+    EndIf
+
+    aAdd(aParam, {1, "Taxa de conversão do Dolar:", nTxDolar, "@E 999.9999", "Positivo()"    , "", ".T.", 50,  .F.})
+    
+    If ParamBox(aParam, "Conversão de Títulos (Pós-Fixado)",)
+        
+        nTaxaPtax := MV_PAR01
+        
+        If nTaxaPtax <= 0
+            MsgStop("A taxa do dólar informada deve ser maior que zero!", "Erro")
+            Return .F.
+        EndIf
+    Else
+        MsgInfo("Geração de títulos cancelada pelo usuário.", "Cancelado")
+        Return .F.
+    EndIf
+
+    nGerados := 0 
+
+    (cAliasTRB)->(DbGoTop())
+    While !(cAliasTRB)->(Eof())
+        If (cAliasTRB)->OK <> " " 
+            
+            DbSelectArea("ZX5")
+            ZX5->(DbGoTo((cAliasTRB)->REC_ZX5))
+
+            oItem := JsonObject():New()
+            
+            Iif(!Empty(ZX5->ZX5_FILIAL),     oItem['FILIAL_TITULO']   := ZX5->ZX5_FILIAL,            Nil)
+            Iif(!Empty(ZX5->ZX5_PREFIX),     oItem['PREFIXO_TITULO']  := Upper(ZX5->ZX5_PREFIX),     Nil)
+            Iif(!Empty(ZX5->ZX5_NUMERO),     oItem['NUMERO_TITULO']   := Upper(ZX5->ZX5_NUMERO),     Nil)
+            Iif(!Empty(ZX5->ZX5_PARCEL),     oItem['PARCELA_TITULO']  := Upper(ZX5->ZX5_PARCEL),     Nil)
+            Iif(!Empty(ZX5->ZX5_TIPO),       oItem['TIPO_TITULO']     := Upper(ZX5->ZX5_TIPO),       Nil)
+            Iif(!Empty(ZX5->ZX5_FORNEC),     oItem['FORNECEDOR']      := ZX5->ZX5_FORNEC,            Nil)
+            Iif(!Empty(ZX5->ZX5_LOJA),       oItem['LOJA']            := ZX5->ZX5_LOJA,              Nil)
+            Iif(!Empty(ZX5->ZX5_CODIGO),     oItem['NUMERO_CONTRATO'] := ZX5->ZX5_CODIGO,            Nil)
+
+            Iif(!Empty(ZX5->ZX5_EMISSA),     oItem['DATA_EMISSAO']    := DtoS(ZX5->ZX5_EMISSA),      Nil)
+            Iif(!Empty(ZX5->ZX5_VENCTO),     oItem['DATA_VENCIMENTO'] := DtoS(ZX5->ZX5_VENCTO),      Nil)
+            Iif(ZX5->ZX5_VLRTIT > 0,         oItem['VALOR_TITULO']    := cValToChar(ZX5->ZX5_VLRTIT), Nil)
+            
+            oItem['HISTORICO']              := "TITULO GERADO MANUALMENTE"
+            oItem['BANCO']                  := ""
+            oItem['AGENCIA']                := ""
+            
+            oItem['MOEDA']           := 2 
+            oItem['PTAX']            := cValToChar(nTaxaPtax) 
+            oItem['ORIGEM']          := "MARKBROWSE"
+
+            AAdd(aInclui, oItem)
+            nGerados++
+        EndIf
+        (cAliasTRB)->(DbSkip())
+    EndDo
+
+    If nGerados > 0
+        oJsonReq['INCLUI_PAGAR'] := aInclui
+
+        aRet := U_gravaDados(oJsonReq)
+
+        If ValType(aRet) == "A" .And. aRet[1] == .T.
+            MsgInfo("Títulos gerados e convertidos no Contas a Pagar com sucesso!", "Sucesso")
+
+            (cAliasTRB)->(DbGoTop())
+            While !(cAliasTRB)->(Eof())
+                If (cAliasTRB)->OK <> " "
+                    DbSelectArea("ZX5")
+                    ZX5->(DbGoTo((cAliasTRB)->REC_ZX5))
+                    
+                    RecLock("ZX5", .F.)
+                    ZX5->ZX5_STATUS := "2" 
+                    ZX5->(MsUnlock())
+                EndIf
+                (cAliasTRB)->(DbSkip())
+            EndDo
+        Else
+            MsgStop("Houve um erro na geração dos títulos: " + aRet[2], "Erro")
+        EndIf
+    EndIf
+
+    FreeObj(oJsonReq)
+Return .T.
+/*
+______________________________________________________________________________
+| Função    | U_MnuVazio                                                      |
+| Descrição | Menu vazio para limpar os botoes superiores do FWMarkBrowse     |
+|___________|_________________________________________________________________|
+*/
+User Function MnuVazio()
+Return {}
