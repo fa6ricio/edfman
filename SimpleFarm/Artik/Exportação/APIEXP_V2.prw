@@ -11,7 +11,7 @@ API de Pedido de Exportação (EEC) com Integração Automática Financeiro (SC5)
 /*/
 
 WSRESTFUL APIEECAUTO DESCRIPTION "API Exportacao Automatizada"
-	WsMethod POST INCLUIR Description 'Incluir Pedido' WSSYNTAX "/api/v1/eec/auto-orders"
+	WsMethod POST INCLUIR Description 'Incluir Pedido' WSSYNTAX "/api/v1/eec/auto-orders" PATH '/'
 END WSRESTFUL
 
 WSMETHOD POST INCLUIR WsService APIEECAUTO
@@ -125,10 +125,12 @@ Static Function GravarPedido(jOrder)
 	Local nX            := 0
 	Local cPedido       := ""
 	Local dDataProc     := dDataBase
+	Local cTipoFrete    := ''
 
 	// Variáveis auxiliares
 	Local aDadosImp, aDadosExp, aDadosProd, cNomeImp, cNomeExp, cDescProd, cNcmProd
 	Local cNumPedVenda  := ""
+	Local nTamCFOP := TamSx3("C6_CF")[1]
 
 	// Variáveis Private do EEC (Reinicialização a cada pedido)
 	Private aPDocs      := {}
@@ -154,6 +156,8 @@ Static Function GravarPedido(jOrder)
 	// 2. MONTAGEM DO CABEÇALHO (EE7)
 	// -----------------------------------------------------------
 	If jOrder:HasProperty("dtPedido"); dDataProc := SToD(StrTran(jOrder['dtPedido'], "-", "")); EndIf
+
+		cTipoFrete := jOrder['dadosComerciais']['incoterm']
 
 		aadd( aCab , {'EE7_PEDIDO' , cPedido                        , NIL} )
 		aadd( aCab , {'EE7_DTPROC' , dDataProc                      , NIL} )
@@ -218,24 +222,25 @@ Static Function GravarPedido(jOrder)
 					aAdd(aItemAux, {'EE8_QTDEM1', aItensJson[nX]['qtdEmbalagem']     , NIL} )
 					aAdd(aItemAux, {'EE8_PRECO ', aItensJson[nX]['preco']            , NIL} )
 					aAdd(aItemAux, {'EE8_PSLQUN', aItensJson[nX]['pesoLiqUnit']      , NIL} )
+					aAdd(aItemAux, {'EE8_PSBRUN', aItensJson[nX]['pesoBrutoUnit']    , NIL} )
 					aAdd(aItemAux, {'EE8_POSIPI', cNcmProd                           , NIL} )
 					aAdd(aItemAux, {'EE8_TES'   , aItensJson[nX]['tes']              , NIL} )
-					aAdd(aItemAux, {'EE8_CF'    , aItensJson[nX]['cfop']             , NIL} )
+					aAdd(aItemAux, {'EE8_CF'    , PADR(ALLTRIM(aItensJson[nX]['cfop']),nTamCFOP,'')   , NIL} )
 					aAdd(aItemAux, {"AUTDELETA" , "N"                                , Nil} )
 
 					AADD( aItens, aItemAux )
 				Next nX
 
-				aNFLote    := jOrder['nflotes']
+				aNFLote   := jOrder['nflotes']
 
 				For nX := 1 To Len(aNFLote)
-					aAdd(aItemNFa, {aItensJson[nX]['nf']   } )
-					aAdd(aItemNFa, {aItensJson[nX]['serie']} )
-					aAdd(aItemNFa, {aItensJson[nX]['chave']} )
-					aAdd(aItemNFa, {aItensJson[nX]['item'] } )
-					aAdd(aItemNFa, { cValToChar(aItensJson[nX]['quantidade'])} )
-					aAdd(aItemNFa, {aItensJson[nX]['tipo'] } )
-					aAdd(aItemNFa, {aItensJson[nX]['itemexport'] } )
+					aAdd(aItemNFa, aNFLote[nX]['nf']    )
+					aAdd(aItemNFa, aNFLote[nX]['serie'] )
+					aAdd(aItemNFa, aNFLote[nX]['chave'] )
+					aAdd(aItemNFa, aNFLote[nX]['item']  )
+					aAdd(aItemNFa, aNFLote[nX]['quantidade'] )
+					aAdd(aItemNFa, aNFLote[nX]['tipo']  )
+					aAdd(aItemNFa, aNFLote[nX]['itemexport']  )
 
 					AADD( aItensNF, aItemNFa )
 					aItemNFa:={}
@@ -264,13 +269,13 @@ Static Function GravarPedido(jOrder)
 						RecLock("ZX1",.T.)
 						ZX1->ZX1_FILIAL     :=xFilial('ZX1')
 						ZX1->ZX1_EXPORT     :=cPedido
-						ZX1->ZX1_NOTA       :=aItensNF[1]
-						ZX1->ZX1_SERIE      :=aItensNF[2]
-						ZX1->ZX1_CHAVE      :=aItensNF[3]
-						ZX1->ZX1_ITEM       :=aItensNF[4]
-						ZX1->ZX1_QUANTI     :=aItensNF[5]
-						ZX1->ZX1_TIPO       :=Upper(aItensNF[6])
-						ZX1->ZX1_ITEMEX		:=Upper(aItensNF[7])
+						ZX1->ZX1_NOTA       :=aItensNF[nX][1]
+						ZX1->ZX1_SERIE      :=aItensNF[nX][2]
+						ZX1->ZX1_CHAVE      :=aItensNF[nX][3]
+						ZX1->ZX1_ITEM       :=aItensNF[nX][4]
+						ZX1->ZX1_QUANTI     :=aItensNF[nX][5]
+						ZX1->ZX1_TIPO       :=aItensNF[nX][6]
+						ZX1->ZX1_ITEMEX     :=aItensNF[nX][7]
 						msUnLock()
 					Next
 
@@ -296,6 +301,8 @@ Static Function GravarPedido(jOrder)
 							If SC5->(MsSeek(xFilial("SC5") + cNumPedVenda))
 
 								If RecLock("SC5", .F.)
+
+									SC5->C5_TPFRETE := SUBSTR(ALLTRIM(cTipoFrete),1,1)
 
 									// Atualiza Pesos e Volumes no Pedido de Venda
 									If jOrder:HasProperty("pesoBrutoTotal")
