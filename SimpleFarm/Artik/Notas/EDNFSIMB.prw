@@ -2,11 +2,11 @@
 #Include "RestFul.ch"
 #Include "TopConn.ch"
 
-WSRESTFUL WSAPIINT DESCRIPTION "API de Documentos de Saida (NF vinculada a PV)"
+WSRESTFUL EDNFSIMB DESCRIPTION "API de Documentos de Saida (NF vinculada a PV)"
 
 	WSDATA Page        AS INTEGER OPTIONAL
 	WSDATA PageSize    AS INTEGER OPTIONAL
-	WSDATA Cursor      AS STRING  OPTIONAL  // RECNO SF2 (keyset)
+	WSDATA Cursor      AS STRING  OPTIONAL  // RECNO SF1 (keyset)
 
 	WSMETHOD GET 1 DESCRIPTION "Lista NFs vinculadas a Pedido de Venda" WSSYNTAX "/v1/outbound-docs" PATH '/'
 	WSMETHOD PUT 1 DESCRIPTION "Atualiza integracao no Pedido de Venda" WSSYNTAX "/v1/outbound-docs" PATH '/'
@@ -83,7 +83,7 @@ Return aRet
 /* GET                                                                         */
 /* ========================================================================== */
 
-	WSMETHOD GET 1 WSRESTFUL WSAPIINT
+	WSMETHOD GET 1 WSRESTFUL EDNFSIMB
 
 	Local oResp       := JsonObject():New()
 	Local aData       := {}
@@ -100,11 +100,11 @@ Return aRet
 	Local nPage       := IIf(Empty(Self:Page) .Or. Self:Page <= 0, 1, Self:Page)
 	Local nPageSize   := IIf(Empty(Self:PageSize) .Or. Self:PageSize <= 0, 50, Self:PageSize)
 
-	// Cursor (keyset por RECNO SF2)
+	// Cursor (keyset por RECNO SF1)
 	Local cCursor     := ''
 
 	// Filtro data (>= 20250101)
-	Local cDtIni      := "20260315"
+	Local cDtIni      := "20260224"
 
 	// Saída de paginação
 	Local cNextCursor := ""
@@ -129,6 +129,7 @@ Return aRet
 	Local cMsg    := ""
 	Local cChRaw  := ""
 	Local cChave  := ""
+	Local cChaveRef := ""
 	Local oItem := JsonObject():New()
 
 	Private Retorno
@@ -138,45 +139,38 @@ Return aRet
 	BEGIN SEQUENCE
 
 		cQuery := " SELECT DISTINCT "
-		cQuery += "   SF2.R_E_C_N_O_  AS REC_SF2,SC5.C5_NUM,SF2.F2_FILIAL,"
-		cQuery += "   SF2.F2_FILIAL, SF2.F2_DOC, SF2.F2_SERIE, SF2.F2_CLIENTE, SF2.F2_LOJA, "
-		cQuery += "   SF2.F2_EMISSAO, SF2.F2_VALMERC, SF2.F2_CHVNFE, "
-		cQuery += "   SF2.F2_PLIQUI, SF2.F2_PBRUTO, SF2.F2_TRANSP, SF2.F2_COND, "
-		cQuery += "   SD2.D2_PEDIDO, "
-		cQuery += "   SF3.F3_CHVNFE, SF3.F3_CODRSEF, SF3.F3_PROTOC "
-		cQuery += " FROM " + RetSqlName("SF2") + " SF2 "
-		cQuery += " INNER JOIN " + RetSqlName("SD2") + " SD2 "
-		cQuery += "   ON SD2.D_E_L_E_T_ = ' ' "
-		cQuery += "  AND SD2.D2_FILIAL  = SF2.F2_FILIAL "
-		cQuery += "  AND SD2.D2_DOC     = SF2.F2_DOC "
-		cQuery += "  AND SD2.D2_SERIE   = SF2.F2_SERIE "
-		cQuery += "  AND SD2.D2_PEDIDO <> '' "
-		cQuery += " INNER JOIN " + RetSqlName("SC5") + " SC5 "
-		cQuery += "   ON SC5.D_E_L_E_T_ = ' ' "
-		cQuery += "  AND SC5.C5_NUM     = SD2.D2_PEDIDO "
+		cQuery += "   SF1.R_E_C_N_O_  AS REC_SF1,SF1.F1_FILIAL,"
+		cQuery += "   SF1.F1_DOC, SF1.F1_SERIE, SF1.F1_FORNECE, SF1.F1_LOJA, "
+		cQuery += "   SF1.F1_EMISSAO, SF1.F1_VALMERC, SF1.F1_CHVNFE, "
+		cQuery += "   SF1.F1_PLIQUI, SF1.F1_PBRUTO, SF1.F1_TRANSP, SF1.F1_COND, "
+		cQuery += "   SF3.F3_CHVNFE, SF3.F3_CODRSEF, SF3.F3_PROTOC,SD1.D1_NFORI,SD1.D1_SERIORI,SD1.D1_FORNECE,SD1.D1_LOJA"
+		cQuery += " FROM " + RetSqlName("SF1") + " SF1 "
+		cQuery += " INNER JOIN " + RetSqlName("SD1") + " SD1 "
+		cQuery += "   ON SD1.D_E_L_E_T_ = ' ' "
+		cQuery += "  AND SD1.D1_FILIAL  = SF1.F1_FILIAL "
+		cQuery += "  AND SD1.D1_DOC     = SF1.F1_DOC "
+		cQuery += "  AND SD1.D1_SERIE   = SF1.F1_SERIE "
 		cQuery += " LEFT JOIN " + RetSqlName("SF3") + " SF3 "
 		cQuery += "   ON SF3.D_E_L_E_T_  = ' ' "
-		cQuery += "  AND SF3.F3_FILIAL   = SF2.F2_FILIAL "
-		cQuery += "  AND SF3.F3_NFISCAL  = SF2.F2_DOC "
-		cQuery += "  AND SF3.F3_SERIE    = SF2.F2_SERIE "
-		cQuery += "  AND SF3.F3_CLIEFOR  = SF2.F2_CLIENTE "
-		cQuery += "  AND SF3.F3_LOJA     = SF2.F2_LOJA "
-		cQuery += "  AND SF3.F3_ESPECIE  = SF2.F2_ESPECIE "
-		cQuery += " WHERE SF2.D_E_L_E_T_ = ' ' "
-		cQuery += "  AND SF2.F2_ESPECIE  = 'SPED' "
-		cQuery += "  AND SF2.F2_CHVNFE  <> '' "
-		cQuery += "  AND SF2.F2_EMISSAO >= '" + cDtIni + "' "
-		cQuery += "  AND SF2.F2_XPDINT = ''"
-		cQuery += "  AND SD2.D2_CF IN ('6505','5505')"
-		cQuery += "  AND SF3.F3_CODRSEF IN ('100','101')"
-		//cQuery += "  AND SF2.F2_DOC >= '000000071'"
+		cQuery += "  AND SF3.F3_FILIAL   = SF1.F1_FILIAL "
+		cQuery += "  AND SF3.F3_NFISCAL  = SF1.F1_DOC "
+		cQuery += "  AND SF3.F3_SERIE    = SF1.F1_SERIE "
+		cQuery += "  AND SF3.F3_CLIEFOR  = SF1.F1_FORNECE "
+		cQuery += "  AND SF3.F3_LOJA     = SF1.F1_LOJA "
+		cQuery += "  AND SF3.F3_ESPECIE  = SF1.F1_ESPECIE "
+		cQuery += " WHERE SF1.D_E_L_E_T_ = ' ' "
+		cQuery += "  AND SF1.F1_ESPECIE  = 'SPED' "
+		cQuery += "  AND SF1.F1_CHVNFE  <> '' "
+		cQuery += "  AND SF1.F1_EMISSAO >= '" + cDtIni + "' "
+		cQuery += "  AND SF1.F1_XPDINT = ''"
+		cQuery += "  AND SD1.D1_CF IN ('1506','2506')"
 
 		// Keyset (cursor)
 		If !Empty(cCursor)
-			cQuery += " AND SF2.R_E_C_N_O_ > " + _SqlSanitize(cCursor) + " "
+			cQuery += " AND SF1.R_E_C_N_O_ > " + _SqlSanitize(cCursor) + " "
 		EndIf
 
-		cQuery += " ORDER BY SF2.R_E_C_N_O_ "
+		cQuery += " ORDER BY SF1.R_E_C_N_O_ "
 
 		cQuery := ChangeQuery(cQuery)
 
@@ -210,7 +204,7 @@ Return aRet
 			// Se for o registro extra (pageSize+1), não adiciona em data
 			If nRead >= nWanted
 				lHasNext := .T.
-				cNextCursor := cValToChar((cAliasMain)->REC_SF2) // cursor do "próximo" começo
+				cNextCursor := cValToChar((cAliasMain)->REC_SF1) // cursor do "próximo" começo
 				Exit
 			EndIf
 
@@ -220,14 +214,14 @@ Return aRet
 			If (cAliasMain)->(FieldPos("F3_CHVNFE")) > 0 .And. !Empty(AllTrim((cAliasMain)->F3_CHVNFE))
 				cChRaw := (cAliasMain)->F3_CHVNFE
 			Else
-				cChRaw := (cAliasMain)->F2_CHVNFE
+				cChRaw := (cAliasMain)->F1_CHVNFE
 			EndIf
 			cChave := _OnlyDigits(cChRaw)
 
 			If Len(cChave) <> 44
-				_Log("GET|WARN|CHAVE_INVALIDA|rec=" + cValToChar((cAliasMain)->REC_SF2) + ;
-					"|doc=" + AllTrim((cAliasMain)->F2_DOC) + ;
-					"|serie=" + AllTrim((cAliasMain)->F2_SERIE) + ;
+				_Log("GET|WARN|CHAVE_INVALIDA|rec=" + cValToChar((cAliasMain)->REC_SF1) + ;
+					"|doc=" + AllTrim((cAliasMain)->F1_DOC) + ;
+					"|serie=" + AllTrim((cAliasMain)->F1_SERIE) + ;
 					"|len=" + cValToChar(Len(cChave)))
 			EndIf
 
@@ -243,35 +237,54 @@ Return aRet
 			cSts := aMap[1]
 			cMsg := aMap[2]
 
-			oNf["Filial"]         := AllTrim((cAliasMain)->F2_FILIAL)
+//PEGA CHAVE NF RETORNO
+			cAliasRet := GetNextAlias()
+			cQueryItens := " SELECT SF2.F2_CHVNFE "
+			cQueryItens += " FROM " + RetSqlName("SF2") + " SF2 "
+			cQueryItens += " WHERE SF2.D_E_L_E_T_ = ' ' "
+			cQueryItens += "   AND SF2.F2_FILIAL = '" + _SqlSanitize((cAliasMain)->F1_FILIAL) + "' "
+			cQueryItens += "   AND SF2.F2_DOC    = '" + _SqlSanitize((cAliasMain)->D1_NFORI)    + "' "
+			cQueryItens += "   AND SF2.F2_SERIE  = '" + _SqlSanitize((cAliasMain)->D1_SERIORI)  + "' "
+
+			cQueryItens := ChangeQuery(cQueryItens)
+			MPSysOpenQuery(cQueryItens, cAliasRet)
+
+			While (cAliasRet)->(!Eof())
+				cChaveRef := AllTrim((cAliasRet)->F2_CHVNFE)
+				(cAliasRet)->(DbSkip())
+			EndDo
+			(cAliasRet)->(DbCloseArea())
+
+			oNf["Filial"]         := AllTrim((cAliasMain)->F1_FILIAL)
 			oNf["NfChave"]        := cChave
-			oNf["CodNf"]          := AllTrim((cAliasMain)->F2_DOC)
-			oNf["NfSerie"]        := AllTrim((cAliasMain)->F2_SERIE)
+			oNf["NfChaveOrigem"]  := cChaveRef
+			oNf["CodNf"]          := AllTrim((cAliasMain)->F1_DOC)
+			oNf["NfSerie"]        := AllTrim((cAliasMain)->F1_SERIE)
 			oNf["TipoNf"]         := "1"
-			oNf["ValorTotal"]     := (cAliasMain)->F2_VALMERC
-			oNf["DataEmissaoNf"]  := _ToIsoDate((cAliasMain)->F2_EMISSAO)
-			oNf["NfDoc"]          := AllTrim((cAliasMain)->C5_NUM)
+			oNf["ValorTotal"]     := (cAliasMain)->F1_VALMERC
+			oNf["DataEmissaoNf"]  := _ToIsoDate((cAliasMain)->F1_EMISSAO)
+			oNf["NfDoc"]          := AllTrim((cAliasMain)->F1_DOC)
 
 			oNf["NfStatus"]       := cSts
 			oNf["CodSefaz"]       := cCodSef
 			oNf["MsgSefaz"]       := cMsg
 			oNf["Protocolo"]      := cProt
 
-			oNf["NfRecerenceErp"] := cValToChar((cAliasMain)->REC_SF2)
-			oNf["tipo_venda"]     := "506"
-			oNf["NrDocumento"]    := AllTrim((cAliasMain)->F2_DOC)
-			oNf["PesoLiquido"]    := (cAliasMain)->F2_PLIQUI
-			oNf["PesoBruto"]      := (cAliasMain)->F2_PBRUTO
+			oNf["NfRecerenceErp"] := cValToChar((cAliasMain)->REC_SF1)
+			oNf["tipo_venda"]     := "019"
+			oNf["NrDocumento"]    := AllTrim((cAliasMain)->F1_DOC)
+			oNf["PesoLiquido"]    := (cAliasMain)->F1_PLIQUI
+			oNf["PesoBruto"]      := (cAliasMain)->F1_PBRUTO
 
 			If !Empty(cEmpCorrente)
 				oNf["CodEmitente"] := "F" + cEmpCorrente
 			Else
-				oNf["CodEmitente"] := "F" + SubStr((cAliasMain)->F2_FILIAL, 1, 2)
+				oNf["CodEmitente"] := "F" + SubStr((cAliasMain)->F1_FILIAL, 1, 2)
 			EndIf
 
-			oNf["CodDestinatario"]   := "C" + AllTrim((cAliasMain)->F2_CLIENTE)
-			oNf["CodTransportadora"] := AllTrim((cAliasMain)->F2_TRANSP)
-			oNf["CodCondPagto"]      := AllTrim((cAliasMain)->F2_COND)
+			oNf["CodDestinatario"]   := "C" + AllTrim((cAliasMain)->F1_FORNECE)
+			oNf["CodTransportadora"] := AllTrim((cAliasMain)->F1_TRANSP)
+			oNf["CodCondPagto"]      := AllTrim((cAliasMain)->F1_COND)
 
 			oNf["UnidadeMedQtd"] := "KG"
 			oNf["QtdFardos"]     := 1
@@ -279,30 +292,30 @@ Return aRet
 			oNf["Itens"]    := {}
 			oNf["Parcelas"] := {}
 
-            /* Itens (SD2) da NF */
+            /* Itens (SD1) da NF */
 			cAliasItens := GetNextAlias()
-			cQueryItens := " SELECT D2_ITEM, D2_COD, D2_QUANT, D2_PRCVEN, D2_LOCAL, D2_UM, D2_PEDIDO, D2_ITEMPV "
-			cQueryItens += " FROM " + RetSqlName("SD2") + " SD2 "
-			cQueryItens += " WHERE SD2.D_E_L_E_T_ = ' ' "
-			cQueryItens += "   AND SD2.D2_FILIAL = '" + _SqlSanitize((cAliasMain)->F2_FILIAL) + "' "
-			cQueryItens += "   AND SD2.D2_DOC    = '" + _SqlSanitize((cAliasMain)->F2_DOC)    + "' "
-			cQueryItens += "   AND SD2.D2_SERIE  = '" + _SqlSanitize((cAliasMain)->F2_SERIE)  + "' "
-			cQueryItens += " ORDER BY D2_ITEM "
+			cQueryItens := " SELECT D1_ITEM, D1_COD, D1_QUANT, D1_VUNIT, D1_LOCAL, D1_UM, D1_PEDIDO,D1_ITEMPC"
+			cQueryItens += " FROM " + RetSqlName("SD1") + " SD1 "
+			cQueryItens += " WHERE SD1.D_E_L_E_T_ = ' ' "
+			cQueryItens += "   AND SD1.D1_FILIAL = '" + _SqlSanitize((cAliasMain)->F1_FILIAL) + "' "
+			cQueryItens += "   AND SD1.D1_DOC    = '" + _SqlSanitize((cAliasMain)->F1_DOC)    + "' "
+			cQueryItens += "   AND SD1.D1_SERIE  = '" + _SqlSanitize((cAliasMain)->F1_SERIE)  + "' "
+			cQueryItens += " ORDER BY D1_ITEM "
 
 			cQueryItens := ChangeQuery(cQueryItens)
 			MPSysOpenQuery(cQueryItens, cAliasItens)
 
 			While (cAliasItens)->(!Eof())
 
-				oItem["NrRemessa"]        := "1"
-				oItem["ItemRemessa"]      := AllTrim((cAliasItens)->D2_ITEM)
-				oItem["Ordem"]            := AllTrim((cAliasItens)->D2_PEDIDO)
-				oItem["ItemOrdem"]        := AllTrim((cAliasItens)->D2_ITEMPV)
-				oItem["CodItem"]          := AllTrim((cAliasItens)->D2_COD)
-				oItem["Quantidade"]       := (cAliasItens)->D2_QUANT
-				oItem["ValorUnit"]        := (cAliasItens)->D2_PRCVEN
-				oItem["LocalEstoque"]     := AllTrim((cAliasItens)->D2_LOCAL)
-				oItem["UnidadeMedidaQtd"] := AllTrim((cAliasItens)->D2_UM)
+				oItem["NrRemessa"]        := PadL(AllTrim((cAliasItens)->D1_ITEM), 4, '0')
+				oItem["ItemRemessa"]      := PadL(AllTrim((cAliasItens)->D1_ITEM), 4, '0')
+				oItem["Ordem"]            := AllTrim((cAliasItens)->D1_PEDIDO)
+				oItem["ItemOrdem"]        := AllTrim((cAliasItens)->D1_ITEMPC)
+				oItem["CodItem"]          := AllTrim((cAliasItens)->D1_COD)
+				oItem["Quantidade"]       := (cAliasItens)->D1_QUANT
+				oItem["ValorUnit"]        := (cAliasItens)->D1_VUNIT
+				oItem["LocalEstoque"]     := AllTrim((cAliasItens)->D1_LOCAL)
+				oItem["UnidadeMedidaQtd"] := AllTrim((cAliasItens)->D1_UM)
 
 				AAdd(oNf["Itens"], oItem)
 				(cAliasItens)->(DbSkip())
@@ -313,7 +326,7 @@ Return aRet
 			AAdd(aData, oWrap)
 
 			// Cursor da última NF entregue nesta página
-			cNextCursor := cValToChar((cAliasMain)->REC_SF2)
+			cNextCursor := cValToChar((cAliasMain)->REC_SF1)
 
 			nRead++
 			(cAliasMain)->(DbSkip())
@@ -357,11 +370,11 @@ Return .T.
 
 /* -------------------------------------------------------------------------- */
 
-/* PUT: Atualiza Pedido de Venda (SC5) vinculado à Nota                       */
+/* PUT: Atualiza Notas (SF1) de retorno simbólico.                            */
 
 /* -------------------------------------------------------------------------- */
 
-	WSMETHOD PUT 1 WSRESTFUL WSAPIINT
+	WSMETHOD PUT 1 WSRESTFUL EDNFSIMB
 	Local cBody     := Self:GetContent()
 	Local oJsonBody := JsonObject():New()
 	Local oJsonResp := JsonObject():New()
@@ -399,54 +412,53 @@ Return .T.
 	ConOut("API_PUT_DEBUG: Buscando Nota Filial: " + aFil + " Doc: " + cDocSQL + " Serie: " + cSerieSQL)
 
 	cAliasPed := GetNextAlias()
-	cQuery := " SELECT DISTINCT SF2.R_E_C_N_O_ AS RECNO "
-	cQuery += " FROM " + RetSqlName("SF2") + " SF2 "
-	cQuery += " WHERE SF2.F2_FILIAL = '" + aFil + "' "
-	cQuery += " AND SF2.F2_CHVNFE   = '" + cChave + "' "
+	cQuery := " SELECT DISTINCT SF1.R_E_C_N_O_ AS RECNO "
+	cQuery += " FROM " + RetSqlName("SF1") + " SF1 "
+	cQuery += " WHERE SF1.F1_FILIAL = '" + aFil + "' "
+	cQuery += " AND SF1.F1_CHVNFE   = '" + cChave + "' "
 
 	MPSysOpenQuery(cQuery, cAliasPed)
 
-	ConOut("API_PUT_DEBUG: Query SF2: " + cQuery)
+	ConOut("API_PUT_DEBUG: Query SF1: " + cQuery)
 
 	If (cAliasPed)->(Eof())
-		ConOut("API_PUT_DEBUG: Query SF2 retornou vazio.")
+		ConOut("API_PUT_DEBUG: Query SF1 retornou vazio.")
 		Self:SetStatus(404)
-		Self:SetResponse('{"error": "Nota Fiscal nao encontrada na tabela de itens (SF2) ou sem pedido vinculado"}')
+		Self:SetResponse('{"error": "Nota Fiscal nao encontrada na tabela de itens (SF1) ou sem pedido vinculado"}')
 		(cAliasPed)->(DbCloseArea())
 		FreeObj(oJsonBody)
 		FreeObj(oJsonResp)
 		Return .T.
 	EndIf
 
-	DbSelectArea("SF2")
-	SF2->(DbSetOrder(1))
+	DbSelectArea("SF1")
+	SF1->(DbSetOrder(1))
 // Itera pois uma nota pode vir de mais de um pedido (raro, mas possivel)
 
 	While (cAliasPed)->(!Eof())
 
-		SF2->(DbGoTo((cAliasPed)->RECNO))
-		ConOut("API_PUT_DEBUG: Tentando posicionar SF2 -> Filial: " + aFil)
+		SF1->(DbGoTo((cAliasPed)->RECNO))
+		ConOut("API_PUT_DEBUG: Tentando posicionar SF1 -> Filial: " + aFil)
 
-		If RecLock("SF2", .F.)
+		If RecLock("SF1", .F.)
 			// Atualiza campos de controle
-			//SF2->F2_XDTINT := Date() // Data Atual
-			SF2->F2_XPDINT := "S"    // Flag para não integrar novamente
-			SF2->(MsUnlock())
+			SF1->F1_XPDINT := "S"    // Flag para não integrar novamente
+			SF1->(MsUnlock())
 			lEncontrou := .T.
-			ConOut("API_PUT_DEBUG: SF2 Atualizado com sucesso.")
+			ConOut("API_PUT_DEBUG: SF1 Atualizado com sucesso.")
 		Else
-			ConOut("API_PUT_DEBUG: Falha no RecLock da SF2.")
+			ConOut("API_PUT_DEBUG: Falha no RecLock da SF1.")
 		EndIf
 		(cAliasPed)->(DbSkip())
 	EndDo
 	(cAliasPed)->(DbCloseArea())
 	If lEncontrou
 		Self:SetStatus(200)
-		oJsonResp['message'] := "Pedidos vinculados a nota " + cDoc + " atualizados com sucesso."
+		oJsonResp['message'] := "Nota " + cDoc + " atualizada com sucesso."
 		Self:SetResponse(oJsonResp:ToJson())
 	Else
 		Self:SetStatus(404)
-		Self:SetResponse('{"error": "Nota encontrada, mas o Pedido de Venda vinculado nao foi localizado na SC5"}')
+		Self:SetResponse('{"error": "Nota não encontrada."}')
 	EndIf
 	FreeObj(oJsonBody)
 	FreeObj(oJsonResp)

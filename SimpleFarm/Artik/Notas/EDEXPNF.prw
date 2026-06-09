@@ -2,7 +2,7 @@
 #Include "RestFul.ch"
 #Include "TopConn.ch"
 
-WSRESTFUL WSAPIINT DESCRIPTION "API de Documentos de Saida (NF vinculada a PV)"
+WSRESTFUL EDEXPNF DESCRIPTION "API de Documentos de Saida (NF vinculada a PV)"
 
 	WSDATA Page        AS INTEGER OPTIONAL
 	WSDATA PageSize    AS INTEGER OPTIONAL
@@ -83,7 +83,7 @@ Return aRet
 /* GET                                                                         */
 /* ========================================================================== */
 
-	WSMETHOD GET 1 WSRESTFUL WSAPIINT
+	WSMETHOD GET 1 WSRESTFUL EDEXPNF
 
 	Local oResp       := JsonObject():New()
 	Local aData       := {}
@@ -104,7 +104,7 @@ Return aRet
 	Local cCursor     := ''
 
 	// Filtro data (>= 20250101)
-	Local cDtIni      := "20260315"
+	Local cDtIni      := "20260224"
 
 	// Saída de paginação
 	Local cNextCursor := ""
@@ -143,7 +143,7 @@ Return aRet
 		cQuery += "   SF2.F2_EMISSAO, SF2.F2_VALMERC, SF2.F2_CHVNFE, "
 		cQuery += "   SF2.F2_PLIQUI, SF2.F2_PBRUTO, SF2.F2_TRANSP, SF2.F2_COND, "
 		cQuery += "   SD2.D2_PEDIDO, "
-		cQuery += "   SF3.F3_CHVNFE, SF3.F3_CODRSEF, SF3.F3_PROTOC "
+		cQuery += "   SF3.F3_CHVNFE, SF3.F3_CODRSEF, SF3.F3_PROTOC,SC5.C5_PEDEXP "
 		cQuery += " FROM " + RetSqlName("SF2") + " SF2 "
 		cQuery += " INNER JOIN " + RetSqlName("SD2") + " SD2 "
 		cQuery += "   ON SD2.D_E_L_E_T_ = ' ' "
@@ -167,8 +167,7 @@ Return aRet
 		cQuery += "  AND SF2.F2_CHVNFE  <> '' "
 		cQuery += "  AND SF2.F2_EMISSAO >= '" + cDtIni + "' "
 		cQuery += "  AND SF2.F2_XPDINT = ''"
-		cQuery += "  AND SD2.D2_CF IN ('6505','5505')"
-		cQuery += "  AND SF3.F3_CODRSEF IN ('100','101')"
+		cQuery += "  AND SD2.D2_CF IN ('7504')"
 		//cQuery += "  AND SF2.F2_DOC >= '000000071'"
 
 		// Keyset (cursor)
@@ -250,7 +249,7 @@ Return aRet
 			oNf["TipoNf"]         := "1"
 			oNf["ValorTotal"]     := (cAliasMain)->F2_VALMERC
 			oNf["DataEmissaoNf"]  := _ToIsoDate((cAliasMain)->F2_EMISSAO)
-			oNf["NfDoc"]          := AllTrim((cAliasMain)->C5_NUM)
+			oNf["NfDoc"]          := AllTrim((cAliasMain)->C5_PEDEXP)
 
 			oNf["NfStatus"]       := cSts
 			oNf["CodSefaz"]       := cCodSef
@@ -258,7 +257,7 @@ Return aRet
 			oNf["Protocolo"]      := cProt
 
 			oNf["NfRecerenceErp"] := cValToChar((cAliasMain)->REC_SF2)
-			oNf["tipo_venda"]     := "506"
+			oNf["tipo_venda"]     := "811"
 			oNf["NrDocumento"]    := AllTrim((cAliasMain)->F2_DOC)
 			oNf["PesoLiquido"]    := (cAliasMain)->F2_PLIQUI
 			oNf["PesoBruto"]      := (cAliasMain)->F2_PBRUTO
@@ -361,7 +360,7 @@ Return .T.
 
 /* -------------------------------------------------------------------------- */
 
-	WSMETHOD PUT 1 WSRESTFUL WSAPIINT
+	WSMETHOD PUT 1 WSRESTFUL EDEXPNF
 	Local cBody     := Self:GetContent()
 	Local oJsonBody := JsonObject():New()
 	Local oJsonResp := JsonObject():New()

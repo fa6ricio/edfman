@@ -95,7 +95,7 @@ Method Create(oJson) Class SalesOrderService
     
     // Montagem dos Arrays para ExecAuto
     aCabec := Self:BuildHeader(oJson)
-    aItens := Self:BuildItems(oJson['itens'], 3,oJson)
+    aItens := Self:BuildItems(oJson['itens'], 3)
 
     // Execução
     If !Self:ExecuteRoutine(aCabec, aItens, 3)
@@ -181,47 +181,22 @@ Method BuildHeader(oJson) Class SalesOrderService
     
 Return aHead
 
-Method BuildItems(aItemsJson, nOp,oJson) Class SalesOrderService
+Method BuildItems(aItemsJson, nOp) Class SalesOrderService
     Local aRet   := {}
     Local aLinha := {}
     Local i      := 0
-    Local cEstD
-    Local cEstO
-    Local cCFOP
     
     If ValType(aItemsJson) != "A"; Return {}; EndIf
-    
-    dbSelectArea('SM0')
-    SM0->(dbSetOrder(1))
-    SM0->(dbSeek(cEmpAnt+cFilAnt))
-    cEstO:= SM0->M0_ESTENT
-
-    dbSelectArea('SA1')
-    SA1->(dbSetOrder(1))
-    SA1->(dbSeek(xFilial('SA1')+PadR(Alltrim(oJson['cliente']),6,' ')+Alltrim(oJson['loja'])))
-    cEstD:= SA1->A1_EST 
-
 
     For i := 1 To Len(aItemsJson)
         aLinha := {}
         
-
-        dbSelectArea('SF4')
-        SF4->(dbSetOrder(1))
-        IF SF4->(dbSeek(xFilial('SF4')+aItemsJson[i]['tes']))
-            IF cEstD <> cEstO
-                cCFOP:='6'+SubStr(2,3,SF4->F4_CF)
-            Else 
-                cCFOP:=SF4->F4_CF
-            EndIF
-        EndIF
         // Campos Obrigatórios
         AAdd(aLinha, {"C6_PRODUTO", aItemsJson[i]['produto'], Nil})
         AAdd(aLinha, {"C6_QTDVEN" , aItemsJson[i]['quantidade'], Nil})
         AAdd(aLinha, {"C6_PRCVEN" , aItemsJson[i]['valorUnit'], Nil})
         AAdd(aLinha, {"C6_VALOR"  , aItemsJson[i]['quantidade'] * aItemsJson[i]['valorUnit'], Nil})
         AAdd(aLinha, {"C6_TES"    , aItemsJson[i]['tes'], Nil})
-        AAdd(aLinha, {"C6_CF"     , cCFOP, Nil})
 
         // Tratamento Específico para Alteração
         If nOp == 4

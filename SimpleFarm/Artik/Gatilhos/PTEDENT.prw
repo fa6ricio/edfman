@@ -11,7 +11,7 @@
 // FUNÇÃO PARA CONSUMO DO SERVIÇO REST
 User Function PUTEFENT()
 	Local cURI      := "https://api-ipaas.totvs.app/ipaas/api" // URI DO SERVIÇO REST
-	Local cResource := "/v1/integrations/6357cf03-f8de-4c72-8ecc-0f132524964c/api-key/68cb6602-1d1d-41e5-b728-43e4208e4d62"
+	Local cResource := "/v1/integrations/d5fed3a2-7111-4cde-b33d-ef6fd89abf34/api-key/fae9d686-b7af-41e1-80ec-f81cf8c0728d"
 	Local oRest     := FwRest():New(cURI)                            // CLIENTE PARA CONSUMO REST
 	Local aHeader   := {}
 	Local cJson
@@ -20,18 +20,24 @@ User Function PUTEFENT()
 	AAdd(aHeader, "Content-Type: application/json; charset=UTF-8")
 	AAdd(aHeader, "Accept: application/json")
 
-	// INFORMA O RECURSO
-	oRest:SetPath(cResource)
-	cJson := GetJson()
-	oRest:SetPostParams(cJson)
+	If SF1->F1_XPDINT <> 'S'
+		// INFORMA O RECURSO
+		oRest:SetPath(cResource)
+		cJson := GetJson()
+		oRest:SetPostParams(cJson)
 
-	if !Empty(cJson)
-		// REALIZA O MÉTODO POST E VALIDA O RETORNO
-		If (oRest:Post(aHeader))
-			ConOut("POST: " + oRest:GetResult())
-		Else
-			ConOut("POST: " + oRest:GetLastError())
-		EndIf
+		if !Empty(cJson)
+			// REALIZA O MÉTODO POST E VALIDA O RETORNO
+			If (oRest:Post(aHeader))
+				ConOut("POST: " + oRest:GetResult())
+				If RecLock("SF1", .F.)
+					SF1->F1_XPDINT := "S"    // Flag para não integrar novamente
+					SF1->(MsUnlock())
+				Endif
+			Else
+				ConOut("POST: " + oRest:GetLastError())
+			EndIf
+		Endif
 	Endif
 Return (NIL)
 
