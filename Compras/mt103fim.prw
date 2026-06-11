@@ -292,6 +292,37 @@ If (INCLUI .OR. nOpcao = 4) .AND. nConfirma=1
     // EndIF
 Endif
 
+// --- INÍCIO DA EXCLUSÃO NA ZX4 ---
+If nOpcao == 5 .And. nConfirma == 1
+    cAliasQZX4 := GetNextAlias()
+    
+    // Busca o RECNO da nota na ZX4 usando as chaves da SF1 que está sendo excluída
+    cQueryZX4 := "SELECT R_E_C_N_O_ AS RECNO_ZX4 FROM " + RetSqlName("ZX4") + " "
+    cQueryZX4 += "WHERE ZX4_FILIAL = '" + xFilial("ZX4") + "' "
+    cQueryZX4 += "AND ZX4_NF = '" + SF1->F1_DOC + "' "
+    cQueryZX4 += "AND ZX4_SERIE = '" + SF1->F1_SERIE + "' "
+    cQueryZX4 += "AND ZX4_FORNEC = '" + SF1->F1_FORNECE + "' "
+    cQueryZX4 += "AND ZX4_LOJA = '" + SF1->F1_LOJA + "' "
+    cQueryZX4 += "AND D_E_L_E_T_ = ' ' "
+    
+    cQueryZX4 := ChangeQuery(cQueryZX4)
+    DBUseArea( .T., "TOPCONN", TcGenQry(,,cQueryZX4), cAliasQZX4, .F., .T. )
+    
+    // Faz um laço (caso haja, por alguma anomalia, mais de um registro) e deleta
+    While !(cAliasQZX4)->(Eof())
+        DbSelectArea("ZX4")
+        ZX4->(DbGoTo((cAliasQZX4)->RECNO_ZX4))
+        
+        // Trava o registro atual (.F. pois não é inclusão) e deleta
+        RecLock("ZX4", .F.)
+        ZX4->(DbDelete())
+        ZX4->(MsUnlock())
+        
+        (cAliasQZX4)->(DbSkip())
+    EndDo
+    (cAliasQZX4)->(DbCloseArea())
+EndIf
+
 RestArea(aArea)
 
 Return
