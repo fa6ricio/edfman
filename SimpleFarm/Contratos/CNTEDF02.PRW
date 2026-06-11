@@ -188,7 +188,14 @@ User Function gravaDados(oJsonReq)
                                     RecLock("ZX5", .T.)
                                     ZX5->ZX5_FILIAL := PadR(oItemReq['FILIAL_TITULO'], TamSx3("ZX5_FILIAL")[1])
                                     iif(oItemReq['NUMERO_CONTRATO']     != nil, ZX5->ZX5_CODIGO   := upper(oItemReq['NUMERO_CONTRATO']), nil)                                
-                                    iif(oItemReq['PREFIXO_TITULO']      != nil, ZX5->ZX5_PREFIX  := upper(oItemReq['PREFIXO_TITULO'])  , nil)
+                                    IF upper(oItemReq['TIPO_TITULO']) = '1'
+                                        cPref:='NF'
+                                    ElseIF upper(oItemReq['TIPO_TITULO']) = '2'
+                                        cPref:='PA'
+                                    Else
+                                        cPref:='AT'
+                                    EndIF
+                                    ZX5->ZX5_PREFIX  := cPref
                                     iif(oItemReq['NUMERO_TITULO']       != nil, ZX5->ZX5_NUMERO  := upper(oItemReq['NUMERO_TITULO'])   , nil)
                                     iif(oItemReq['PARCELA_TITULO']      != nil, ZX5->ZX5_PARCEL  := upper(oItemReq['PARCELA_TITULO'])  , nil)
                                     iif(oItemReq['TIPO_TITULO']         != nil, ZX5->ZX5_TIPO    := upper(oItemReq['TIPO_TITULO'])     , nil)
@@ -206,8 +213,8 @@ User Function gravaDados(oJsonReq)
                                     iif(oItemReq['DATA_VENCIMENTO']     != nil, ZX5->ZX5_VENCTO  := sToD(oItemReq['DATA_VENCIMENTO'])     , nil)
                                     ZX5->ZX5_VLRTIT := nValorOrig
                                     ZX5->ZX5_SALDO  := nValorOrig 
-                                    //iif(oItemReq['MOEDA']          != nil, ZX5->ZX5_MOEDA  := val(cValToChar(oItemReq['MOEDA']))    , nil)
-                                    //iif(oItemReq['PTAX']           != nil, ZX5->ZX5_PTAX   := val(cValToChar(oItemReq['PTAX']))     , nil)
+                                    iif(oItemReq['MOEDA']          != nil, ZX5->ZX5_MOEDA  := val(cValToChar(oItemReq['MOEDA']))    , nil)
+                                    iif(oItemReq['PTAX']           != nil, ZX5->ZX5_PTAX   := val(cValToChar(oItemReq['PTAX']))     , nil)
                                     ZX5->ZX5_STATUS := "2" 
                                     ZX5->(MsUnlock())
                                 Endif

@@ -20,7 +20,7 @@ User Function CNTEDF01()
 Private oBrowse 	:= FwMBrowse():New()
 
 oBrowse:SetAlias('ZX3')
-oBrowse:SetDescripton("Contratos Algodao")
+oBrowse:SetDescripton("Contratos de Compra deAlgodao")
 //oBrowse:AddLegend( "ZX3->ZX3_TIPCLE == '1'", "GREEN", "Aberto" )
 //oBrowse:AddLegend( "ZX3->ZX3_TIPCLE == '2'", "RED",   "Gerado" )
 oBrowse:SetAmbiente(.F.)
@@ -80,7 +80,7 @@ Static Function ModelDef()
 
     oStruZX5:AddField( ;
 	AllTrim('') , ;               // [01] C Titulo do campo
-	AllTrim('') , ;               // [02] C ToolTip do campo
+	AllTrim('Legenda de Tipo') , ;               // [02] C ToolTip do campo
 	'ZX5_LEGEND' , ;              // [03] C identificador (ID) do Field
 	'C' , ;                       // [04] C Tipo do campo
 	50 , ;                        // [05] N Tamanho do campo
@@ -89,10 +89,31 @@ Static Function ModelDef()
 	NIL , ;                       // [08] B Code-block de validação When do campo
 	NIL , ;                       // [09] A Lista de valores permitido do campo
 	NIL , ;                       // [10] L Indica se o campo tem preenchimento obrigatório
-	{ || Iif(ZX5->ZX5_TIPO  = 'PA', "BR_BRANCO","BR_PRETO") } , ;           // [11] B Code-block de inicializacao do campo
+	{ || Iif(ZX5->ZX5_TIPO  = 'PA' .AND. ZX5->ZX5_PREFIX = 'PA' ,;
+            "BR_BRANCO",;
+         IIF (ZX5->ZX5_TIPO  = 'PA' .AND. ZX5->ZX5_PREFIX = 'AT',;
+            "BR_AMARELO", ;
+        "BR_CINZA")) } , ;           // [11] B Code-block de inicializacao do campo
 	NIL , ;                       // [12] L Indica se trata de um campo chave
 	NIL , ;                       // [13] L Indica se o campo pode receber valor em uma operação de update.
 	.T. )                         // [14] L Indica se o campo é virtual 
+
+    oStruZX5:AddField( ;
+	AllTrim('') , ;               // [01] C Titulo do campo
+	AllTrim('Legenda de Moedas') , ;               // [02] C ToolTip do campo
+	'ZX5_TPMOD' , ;              // [03] C identificador (ID) do Field
+	'C' , ;                       // [04] C Tipo do campo
+	50 , ;                        // [05] N Tamanho do campo
+	0 , ;                         // [06] N Decimal do campo
+	NIL , ;                       // [07] B Code-block de validação do campo
+	NIL , ;                       // [08] B Code-block de validação When do campo
+	NIL , ;                       // [09] A Lista de valores permitido do campo
+	NIL , ;                       // [10] L Indica se o campo tem preenchimento obrigatório
+	{ || Iif(ZX5->ZX5_MOEDA  = '1', "BR_AZUL","BR_VERDE") } , ;           // [11] B Code-block de inicializacao do campo
+	NIL , ;                       // [12] L Indica se trata de um campo chave
+	NIL , ;                       // [13] L Indica se o campo pode receber valor em uma operação de update.
+	.T. )                         // [14] L Indica se o campo é virtual 
+
 
     oStruZX5:AddField( ;
     'Acao' , ;                      // [01] C Titulo do campo
@@ -105,7 +126,7 @@ Static Function ModelDef()
     NIL , ;                         // [08] B Code-block de validação When do campo
     NIL , ;                         // [09] A Lista de valores permitido do campo
     NIL , ;                         // [10] L Indica se o campo tem preenchimento obrigatório
-    { || Iif(ZX5->ZX5_STATUS == "2", "LBTIK", "LBOK") } ,;               // [11] B Code-block de inicializacao do campo (Icone)
+    { || Iif(ZX5->ZX5_STATUS == "1" .AND. ZX5->ZX5_MOEDA  == '2', "BUDGET", "CADEADO") } ,;               // [11] B Code-block de inicializacao do campo (Icone)
     NIL , ;                         // [12] L Indica se trata de um campo chave
     NIL , ;                         // [13] L Indica se o campo pode receber valor
     .T. )                           // [14] L Indica se o campo é virtual
@@ -135,7 +156,7 @@ Static Function ModelDef()
 	oModel:GetModel("ID_M_GRD_ZX6"):SetOptional(.T.)
 
 	oModel:SetDescription( 'Contratos Algodao' )
-	oModel:GetModel( 'ID_M_FLD_ZX3' ):SetDescription( 'Contratos Algodao' )
+	oModel:GetModel( 'ID_M_FLD_ZX3' ):SetDescription( 'Contratos de Compra deAlgodao' )
     oModel:GetModel( 'ID_M_GRD_ZX4' ):SetDescription( 'Notas Fiscais de Compras' )
 	oModel:GetModel( 'ID_M_GRD_ZX5' ):SetDescription( 'Titulos Financeiros' )
 	oModel:GetModel( 'ID_M_GRD_ZX6' ):SetDescription( 'Parceiros Negocio' )
@@ -167,8 +188,8 @@ Static Function ViewDef()
 	oStruZX5:AddField( ;            	    // Ord. Tipo Desc.
 	'ZX5_LEGEND'                    , ;     // [01] C   Nome do Campo
 	"00"                            , ;     // [02] C   Ordem
-	AllTrim( ''    )        		, ;     // [03] C   Titulo do campo
-	AllTrim( '' )       			, ;     // [04] C   Descricao do campo
+	AllTrim( 'Tipo'    )        		, ;     // [03] C   Titulo do campo
+	AllTrim( 'Tipo de titulo' )       			, ;     // [04] C   Descricao do campo
 	{ 'Legenda' }           		, ;     // [05] A   Array com Help
 	'C'                             , ;     // [06] C   Tipo do campo
 	'@BMP'               			, ;     // [07] C   Picture
@@ -184,9 +205,30 @@ Static Function ViewDef()
 	NIL                             , ;     // [17] C   Picture Variavel
 	NIL                             )       // [18] L   Indica pulo de linha após o campo 
 
+    oStruZX5:AddField( ;            	    // Ord. Tipo Desc.
+	'ZX5_TPMOD'                    , ;     // [01] C   Nome do Campo
+	"01"                            , ;     // [02] C   Ordem
+	AllTrim( 'Moeda'    )        		, ;     // [03] C   Titulo do campo
+	AllTrim( 'Legenda Moeda' )       			, ;     // [04] C   Descricao do campo
+	{ 'Moeda' }           		, ;     // [05] A   Array com Help
+	'C'                             , ;     // [06] C   Tipo do campo
+	'@BMP'               			, ;     // [07] C   Picture
+	NIL                             , ;     // [08] B   Bloco de Picture Var
+	''                              , ;     // [09] C   Consulta F3
+	.T.                             , ;     // [10] L   Indica se o campo é alteravel
+	NIL                             , ;     // [11] C   Pasta do campo
+	NIL                             , ;     // [12] C   Agrupamento do campo
+	NIL                             , ;     // [13] A   Lista de valores permitido do campo (Combo)
+	NIL                             , ;     // [14] N   Tamanho maximo da maior opção do combo
+	NIL                             , ;     // [15] C   Inicializador de Browse
+	.T.                             , ;     // [16] L   Indica se o campo é virtual
+	NIL                             , ;     // [17] C   Picture Variavel
+	NIL                             )       // [18] L   Indica pulo de linha após o campo 
+
+
     oStruZX5:AddField( ;
     'ZX5_GERAR' , ;                 // [01] C   Nome do Campo
-    "01" , ;                        // [02] C   Ordem
+    "02" , ;                        // [02] C   Ordem
     'Gerar' , ;                     // [03] C   Titulo do campo
     'Gerar Titulo' , ;              // [04] C   Descricao do campo
     {'Duplo clique para gerar'} , ; // [05] A   Array com Help (O ARRAY QUE DEU CONFLITO)
@@ -224,7 +266,7 @@ Static Function ViewDef()
 	oView:CreateFolder('GRIDS','ID_HBOX_60')
 
 	//Notas e Pagamentos
-	oView:AddSheet('GRIDS', 'GRID_1', "Notas e Pag")
+	oView:AddSheet('GRIDS', 'GRID_1', "Notas e Pagamentos")
     oView:CreateHorizontalBox("GRID_NFPG", 100,,,'GRIDS','GRID_1')
     oView:CreateVerticalBox('ESQUERDA', 50 , 'GRID_NFPG',,'GRIDS','GRID_1')
 	oView:CreateVerticalBox("DIREITA",  50 , 'GRID_NFPG',,'GRIDS','GRID_1')
@@ -247,14 +289,15 @@ Static Function ViewDef()
 	oView:SetViewProperty("ID_V_GRD_ZX5", "GRIDSEEK", {.T.})
 	oView:SetViewProperty("ID_V_GRD_ZX5", "GRIDFILTER", {.T.})
     oView:SetViewProperty("ID_V_GRD_ZX5", "GRIDDOUBLECLICK", {{|oFormulario, cFieldName, nLineGrid, nLineModel| ;
-        Iif(Alltrim(cFieldName) == "ZX5_LEGEND", TT002(), ;
+        Iif(Alltrim(cFieldName) == "ZX5_LEGEND", TT002(),;
+        Iif(Alltrim(cFieldName) == "ZX5_TPMOD", TT003(), ;
         Iif(Alltrim(cFieldName) == "ZX5_GERAR", ;
             U_GeraMkZX5( oFormulario:GetModel('ID_M_GRD_ZX5'):GetValue('ZX5_NUMERO'), ;
                          oFormulario:GetModel('ID_M_GRD_ZX5'):GetValue('ZX5_PARCEL'), ;
-                         oFormulario:GetModel('ID_M_GRD_ZX5'):GetValue('ZX5_STATUS') ), Nil)) }})
+                         oFormulario:GetModel('ID_M_GRD_ZX5'):GetValue('ZX5_STATUS') ), Nil))) }})
 
 
-	oView:EnableTitleView('ID_V_FLD_ZX3'	, 'Contratos Algodao' )
+	oView:EnableTitleView('ID_V_FLD_ZX3'	, 'Contratos de Compra deAlgodao' )
     oView:EnableTitleView('ID_V_GRD_ZX4'	, 'Notas Fiscais de Compras' )
 	oView:EnableTitleView('ID_V_GRD_ZX5'	, 'Titulos Financeiros' )
 	oView:EnableTitleView('ID_V_GRD_ZX6'	, 'Parceiros Negocio' )
@@ -273,7 +316,7 @@ Static Function TT002()
 oLegend := FWLegend():New()
 
 oLegend:Add( { || }, 'BR_BRANCO'   , 'Pagamento Antecipado' ) 
-oLegend:Add( { || }, 'BR_PRETO'    , 'Pagamento de Nota' ) 
+oLegend:Add( { || }, 'BR_CINZA'    , 'Pagamento de Nota' ) 
 oLegend:Add( { || }, 'BR_AMARELO'  , 'Cessao de Credito' )
 
 
@@ -286,16 +329,17 @@ Return Nil
 
 Static Function TT003()
 
-	Local oModel     	:= FWModelActive()
-	Local oModelSE1 	:= oModel:GetModel( 'SE1DETAIL' )
+oLegend := FWLegend():New()
 
-	DbSelectArea("SE1")
-	SE1->(DbSetOrder(1))
-	If SE1->(DbSeek(xFilial("SE1")+oModelSE1:GetValue("E1_PREFIXO")+oModelSE1:GetValue("E1_NUM")+oModelSE1:GetValue("E1_PARCELA")))
-		FA280Visua( "SE1",SE1->(Recno()),2 )
-	Else
-		Alert("Não Localizou")
-	EndIf
+oLegend:Add( { || }, 'BR_AZUL'   , 'Real' ) 
+oLegend:Add( { || }, 'BR_VERDE'    , 'Dolar' ) 
+
+
+
+oLegend:Activate()
+
+oLegend:View()
+
 
 Return()
 
@@ -403,11 +447,13 @@ User Function GeraMkZX5(cTitNum, cTitParc, cTitStatus)
     If lIsAltera
         cQuery += " WHERE ZX5_FILIAL = '" + xFilial("ZX5") + "' " 
         cQuery += " AND ZX5_CODIGO = '" + ZX3->ZX3_CODIGO + "' "
+        cQuery += " AND ZX5_MOEDA = '2' "
     Else
         cQuery += " WHERE ZX5_FILIAL >= '" + cFilde   + "' AND ZX5_FILIAL <= '" + cFilAte  + "' "
         cQuery += " AND ZX5_FORNEC >= '" + cFornDe  + "' AND ZX5_FORNEC <= '" + cFornAte  + "' "
         cQuery += " AND ZX5_LOJA   >= '" + cLojde   + "' AND ZX5_LOJA   <= '" + cLojAte  + "' "
         cQuery += " AND ZX5_CODIGO >= '" + cContrDe + "' AND ZX5_CODIGO <= '" + cContrAte + "' "
+        cQuery += " AND ZX5_MOEDA = '2' "
 
         cQuery += " AND ZX5_VENCTO >= '" + DtoS(dVenctoDe) + "' AND ZX5_VENCTO <= '" + DtoS(dVenctoAte) + "' "     
                          
