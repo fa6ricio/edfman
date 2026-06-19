@@ -130,7 +130,7 @@ Static Function gravaDados(oJsonReq)
                         If oItemReq['PRODUTO'] != nil
                             DbSelectArea("SB1")
                             SB1->(DbSetOrder(1))   
-                            If SB1->(DbSeek(xFilial("SB1") + oItemReq['PRODUTO']))
+                            If SB1->(DbSeek(xFilial("SB1") + Alltrim(oItemReq['PRODUTO'])))
                                 ZX3->ZX3_PROUTO 	:= SB1->B1_COD
                                 ZX3->ZX3_PRODES   	:= SB1->B1_DESC
                             EndIf
@@ -141,6 +141,8 @@ Static Function gravaDados(oJsonReq)
                         iif(oItemReq['QUANTIDADE']     != nil, ZX3->ZX3_QUANTI := val(cValToChar(oItemReq['QUANTIDADE'])) , nil)
                         iif(oItemReq['VALORUNITARIO']  != nil, ZX3->ZX3_VALOR  := val(cValToChar(oItemReq['VALORUNITARIO'])), nil)
                         iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_VLRTOT := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
+                        iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_SALDO  := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
+                        ZX3->ZX3_SLDPER := 100
                         iif(oItemReq['COTACAOFIXA']    != nil, ZX3->ZX3_COTAFI := val(cValToChar(oItemReq['COTACAOFIXA'])), nil)
 
                         ZX3->(MsUnlock())
