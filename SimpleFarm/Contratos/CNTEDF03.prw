@@ -163,6 +163,7 @@ Static Function gravaDados(oJsonReq)
                             iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_VLRTOT := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
                             iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_SALDO  := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
                             ZX3->ZX3_SLDPER := 100
+                            ZX3->ZX3_BLQPAG := 1
                             iif(oItemReq['COTACAOFIXA']    != nil, ZX3->ZX3_COTAFI := val(cValToChar(oItemReq['COTACAOFIXA'])), nil)
 
                             ZX3->(MsUnlock())
