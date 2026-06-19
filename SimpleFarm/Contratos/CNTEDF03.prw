@@ -83,6 +83,7 @@ Static Function gravaDados(oJsonReq)
     Local oItemReq
     Local oParceiro  
     Local cMsgError := ""
+    Local cFilTit   := ""
     Local lRet      := .T.  
 
 
@@ -95,85 +96,105 @@ Static Function gravaDados(oJsonReq)
             cMsgError := ""
             oItemRet  := JsonObject():New()
             oItemReq  := oJsonReq:GetJsonObject("CONTRATOS")[nRecord]
-            
+
             If oItemReq['FILIAL_TITULO'] == Nil .Or. Empty(oItemReq['FILIAL_TITULO']) .Or. ;
                oItemReq['CODIGO'] == Nil .Or. Empty(oItemReq['CODIGO'])
                 cMsgError := "As chaves FILIAL_TITULO e CODIGO sao obrigatorias."
             Else
-                // Verifica se o contrato já existe para não duplicar
-                If ZX3->(DbSeek(PadR(oItemReq['FILIAL_TITULO'], TamSx3("ZX3_FILIAL")[1]) + PadR(oItemReq['CODIGO'], TamSx3("ZX3_CODIGO")[1])))
-                    cMsgError := "Contrato ja cadastrado na base de dados."
+
+                IF Alltrim(oItemReq['FILIAL_TITULO']) = '01'
+                        cFilTit:= '0101'
+                ElseIF Alltrim(oItemReq['FILIAL_TITULO'])  = '10'
+                        cFilTit:= '0110'
+                ElseIF Alltrim(oItemReq['FILIAL_TITULO'])  = '09'
+                        cFilTit:= '0109'
+                ElseIF Alltrim(oItemReq['FILIAL_TITULO'])  = '13'
+                        cFilTit:= '0113'
+                ElseIF Alltrim(oItemReq['FILIAL_TITULO'])  = '11'
+                        cFilTit:= '0111'    
                 Else
-                    Begin Transaction
-                        
-                        RecLock("ZX3", .T.) 
-                        
-                        ZX3->ZX3_FILIAL := PadR(upper(oItemReq['FILIAL_TITULO']), TamSx3("ZX3_FILIAL")[1])
-                        ZX3->ZX3_CODIGO := PadR(upper(oItemReq['CODIGO'])       , TamSx3("ZX3_CODIGO")[1])
-                        
-                        If oItemReq['FORNECEDOR'] != nil
-                            DbSelectArea("SA2")
-                            SA2->(DbSetOrder(12))   
-                            If SA2->(DbSeek(xFilial("SA2") + oItemReq['FORNECEDOR']))
-                                ZX3->ZX3_FORNEC := SA2->A2_COD
-                                ZX3->ZX3_LOJA   := SA2->A2_LOJA
-								ZX3->ZX3_NOMFOR	:= SA2->A2_NOME
-                            EndIf
-                        EndIf
+                    cMsgError := "FILIAL_TITULO invalida."
+                    lRet := .F.
+                EndIf
 
-                        iif(oItemReq['DATAINICIO']     != nil, ZX3->ZX3_DATA   := sToD(oItemReq['DATAINICIO'])            , nil)
-                        iif(oItemReq['DATAFIM']        != nil, ZX3->ZX3_VIGENC := sToD(oItemReq['DATAFIM'])               , nil)
-                        iif(oItemReq['CONDPAGAMENTO']  != nil, ZX3->ZX3_CONDPG := upper(oItemReq['CONDPAGAMENTO'])        , nil)
-                        iif(oItemReq['MOEDA']          != nil, ZX3->ZX3_MOEDA  := upper(oItemReq['MOEDA'])                , nil)
-                        iif(oItemReq['MOEDAPAGAMENTO'] != nil, ZX3->ZX3_MOEPG  := upper(oItemReq['MOEDAPAGAMENTO'])       , nil)
-
-                        If oItemReq['PRODUTO'] != nil
-                            DbSelectArea("SB1")
-                            SB1->(DbSetOrder(1))   
-                            If SB1->(DbSeek(xFilial("SB1") + Alltrim(oItemReq['PRODUTO'])))
-                                ZX3->ZX3_PROUTO 	:= SB1->B1_COD
-                                ZX3->ZX3_PRODES   	:= SB1->B1_DESC
-                            EndIf
-                        EndIf
-
-                        iif(oItemReq['UM']             != nil, ZX3->ZX3_UM     := upper(oItemReq['UM'])                   , nil)
-                        iif(oItemReq['TIPOCONTRATO']   != nil, ZX3->ZX3_TIPOCO := upper(oItemReq['TIPOCONTRATO'])         , nil)
-                        iif(oItemReq['QUANTIDADE']     != nil, ZX3->ZX3_QUANTI := val(cValToChar(oItemReq['QUANTIDADE'])) , nil)
-                        iif(oItemReq['VALORUNITARIO']  != nil, ZX3->ZX3_VALOR  := val(cValToChar(oItemReq['VALORUNITARIO'])), nil)
-                        iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_VLRTOT := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
-                        iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_SALDO  := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
-                        ZX3->ZX3_SLDPER := 100
-                        iif(oItemReq['COTACAOFIXA']    != nil, ZX3->ZX3_COTAFI := val(cValToChar(oItemReq['COTACAOFIXA'])), nil)
-
-                        ZX3->(MsUnlock())
+                IF lRet
+                    // Verifica se o contrato já existe para não duplicar
+                    If ZX3->(DbSeek(cFilTit + PadR(oItemReq['CODIGO'], TamSx3("ZX3_CODIGO")[1])))
+                        cMsgError := "Contrato ja cadastrado na base de dados."
+                        lRet := .F.
+                    Else
+                        Begin Transaction
                         
-                        If oItemReq['PARCEIROS'] != Nil .And. ValType(oItemReq['PARCEIROS']) == "A"
-                            For nParc := 1 To Len(oItemReq:GetJsonObject("PARCEIROS"))
-                                oParceiro := oItemReq:GetJsonObject("PARCEIROS")[nParc]
-                                
-                                If oParceiro['CODPAR'] != Nil
-                                    RecLock("ZX6", .T.)
-                                    
-                                    ZX6->ZX6_FILIAL := PadR(upper(oItemReq['FILIAL_TITULO']), TamSx3("ZX6_FILIAL")[1])
-                                    ZX6->ZX6_CODIGO := PadR(upper(oItemReq['CODIGO'])       , TamSx3("ZX6_CODIGO")[1])
-                                    ZX6->ZX6_ITEM   := StrZero(nParc, TamSx3("ZX6_ITEM")[1])
-                                    
-                                    DbSelectArea("SA2")
-                                    SA2->(DbSetOrder(12)) 
-                                    If SA2->(DbSeek(xFilial("SA2") + oParceiro['CODPAR']))
-                                        ZX6->ZX6_FORNEC := SA2->A2_COD
-                                        ZX6->ZX6_LOJA   := SA2->A2_LOJA
-                                        ZX6->ZX6_NOMFOR := SA2->A2_NOME
-                                    Else
-                                        ZX6->ZX6_FORNEC := PadR(oParceiro['CODPAR'], TamSx3("ZX6_FORNEC")[1])
-                                    EndIf
-                                    
-                                    ZX6->(MsUnlock())
+
+                            RecLock("ZX3", .T.) 
+                            
+                            ZX3->ZX3_FILIAL := cFilTit
+                            ZX3->ZX3_CODIGO := PadR(upper(oItemReq['CODIGO'])       , TamSx3("ZX3_CODIGO")[1])
+                            
+                            If oItemReq['FORNECEDOR'] != nil
+                                DbSelectArea("SA2")
+                                SA2->(DbSetOrder(12))   
+                                If SA2->(DbSeek(xFilial("SA2") + oItemReq['FORNECEDOR']))
+                                    ZX3->ZX3_FORNEC := SA2->A2_COD
+                                    ZX3->ZX3_LOJA   := SA2->A2_LOJA
+                                    ZX3->ZX3_NOMFOR	:= SA2->A2_NOME
                                 EndIf
-                            Next nParc
-                        EndIf
+                            EndIf
 
-                    End Transaction
+                            iif(oItemReq['DATAINICIO']     != nil, ZX3->ZX3_DATA   := sToD(oItemReq['DATAINICIO'])            , nil)
+                            iif(oItemReq['DATAFIM']        != nil, ZX3->ZX3_VIGENC := sToD(oItemReq['DATAFIM'])               , nil)
+                            iif(oItemReq['CONDPAGAMENTO']  != nil, ZX3->ZX3_CONDPG := upper(oItemReq['CONDPAGAMENTO'])        , nil)
+                            iif(oItemReq['MOEDA']          != nil, ZX3->ZX3_MOEDA  := upper(oItemReq['MOEDA'])                , nil)
+                            iif(oItemReq['MOEDAPAGAMENTO'] != nil, ZX3->ZX3_MOEPG  := upper(oItemReq['MOEDAPAGAMENTO'])       , nil)
+
+                            If oItemReq['PRODUTO'] != nil
+                                DbSelectArea("SB1")
+                                SB1->(DbSetOrder(1))   
+                                If SB1->(DbSeek(xFilial("SB1") + Alltrim(oItemReq['PRODUTO'])))
+                                    ZX3->ZX3_PROUTO 	:= SB1->B1_COD
+                                    ZX3->ZX3_PRODES   	:= SB1->B1_DESC
+                                EndIf
+                            EndIf
+
+                            iif(oItemReq['UM']             != nil, ZX3->ZX3_UM     := upper(oItemReq['UM'])                   , nil)
+                            iif(oItemReq['TIPOCONTRATO']   != nil, ZX3->ZX3_TIPOCO := upper(oItemReq['TIPOCONTRATO'])         , nil)
+                            iif(oItemReq['QUANTIDADE']     != nil, ZX3->ZX3_QUANTI := val(cValToChar(oItemReq['QUANTIDADE'])) , nil)
+                            iif(oItemReq['VALORUNITARIO']  != nil, ZX3->ZX3_VALOR  := val(cValToChar(oItemReq['VALORUNITARIO'])), nil)
+                            iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_VLRTOT := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
+                            iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_SALDO  := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
+                            ZX3->ZX3_SLDPER := 100
+                            iif(oItemReq['COTACAOFIXA']    != nil, ZX3->ZX3_COTAFI := val(cValToChar(oItemReq['COTACAOFIXA'])), nil)
+
+                            ZX3->(MsUnlock())
+                            
+                            If oItemReq['PARCEIROS'] != Nil .And. ValType(oItemReq['PARCEIROS']) == "A"
+                                For nParc := 1 To Len(oItemReq:GetJsonObject("PARCEIROS"))
+                                    oParceiro := oItemReq:GetJsonObject("PARCEIROS")[nParc]
+                                    
+                                    If oParceiro['CODPAR'] != Nil
+                                        RecLock("ZX6", .T.)
+                                        
+                                        ZX6->ZX6_FILIAL := cFilTit  
+                                        ZX6->ZX6_CODIGO := PadR(upper(oItemReq['CODIGO'])       , TamSx3("ZX6_CODIGO")[1])
+                                        ZX6->ZX6_ITEM   := StrZero(nParc, TamSx3("ZX6_ITEM")[1])
+                                        
+                                        DbSelectArea("SA2")
+                                        SA2->(DbSetOrder(12)) 
+                                        If SA2->(DbSeek(xFilial("SA2") + oParceiro['CODPAR']))
+                                            ZX6->ZX6_FORNEC := SA2->A2_COD
+                                            ZX6->ZX6_LOJA   := SA2->A2_LOJA
+                                            ZX6->ZX6_NOMFOR := SA2->A2_NOME
+                                        Else
+                                            ZX6->ZX6_FORNEC := PadR(oParceiro['CODPAR'], TamSx3("ZX6_FORNEC")[1])
+                                        EndIf
+                                        
+                                        ZX6->(MsUnlock())
+                                    EndIf
+                                Next nParc
+                            EndIf
+
+                        End Transaction
+                    EndIF
                 EndIf
             EndIf
             
