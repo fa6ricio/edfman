@@ -62,7 +62,7 @@ WSMETHOD POST IncluiPagar WSSERVICE ContasPagar
         Self:SetResponse('{"errorCode":"400" , "errorMessage":"Parser Json Error. Verifique a estrutura."}')
         lRet := .F.
     Else
-        aRetMov := u_gravaDad(oJsonReq)
+        aRetMov := u_gravaDados(oJsonReq)
         lRet    := aRetMov[1]
         
         If lRet
@@ -80,7 +80,7 @@ Return lRet
 /*
     Função com Array Dinâmico, Prevenção Nativa de Crash e Lógica de Cessão de Crédito
 */
-User Function gravaDad(oJsonReq)   
+User Function gravaDados(oJsonReq)   
     Local nRecord    := 0
     Local oJsonRet   := JsonObject():New()
     Local aRetIncs   := {}
@@ -302,8 +302,8 @@ User Function gravaDad(oJsonReq)
                                     ZX5->ZX5_VLRTIT := nValorAtu
                                     ZX5->ZX5_SALDO  := nValorAtu 
                                     
-                                    iif(oItemReq['MOEDA'] != nil, ZX5->ZX5_MOEDA := val(cValToChar(oItemReq['MOEDA'])) , nil)
-                                    iif(oItemReq['PTAX']  != nil, ZX5->ZX5_PTAX  := val(cValToChar(oItemReq['PTAX']))  , nil)
+                                    iif(oItemReq['MOEDA'] != nil, ZX5->ZX5_MOEDA := upper(oItemReq['MOEDA'])            , nil)
+                                    iif(oItemReq['PTAX']  != nil, ZX5->ZX5_PTAX  := val(cValToChar(oItemReq['PTAX']))   , nil)
                                     
                                     ZX5->ZX5_STATUS := "2" 
                                     ZX5->(MsUnlock())
