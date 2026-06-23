@@ -11,7 +11,7 @@ Ponto de entrada de validação de baixa de títulos de contas a pagar
 /*/
 
 
-User Function F080BXVL()
+User Function FA080TIT()
     Local lRet := .T.
     
     // Como o PE é chamado pela rotina padrão, a tabela SE2 já está posicionada.
