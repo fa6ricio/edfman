@@ -132,7 +132,7 @@ Static Function ModelDef()
     .T. )                           // [14] L Indica se o campo é virtual
 
 
-	oModel	:=	MpFormModel():New('zCNE01',/*Pre-Validacao*/,/*Pos-Validacao*/,/*Commit*/,/*Commit*/,/*Cancel*/)
+	oModel := MpFormModel():New('zCNE01', /*Pre-Validacao*/, /*Pos-Validacao*/, {|oModel| U_CNE01Cmt(oModel)}, /*Cancel*/)
 	oModel:AddFields('ID_M_FLD_ZX3', /*cOwner*/, oStruZX3, /*bPreValidacao*/, /*bPosValidacao*/, /*bCarga*/ )
 	oModel:AddGrid( 'ID_M_GRD_ZX4', 'ID_M_FLD_ZX3', oStruZX4, /*bLinePre*/, /*{|oModelZX4| ValLinha(oModelZX4)}*/, /*bPreVal*/,/*{|oModel| ValLinha(oModel)}*/, /*BLoad*/ )
 	oModel:AddGrid( 'ID_M_GRD_ZX5', 'ID_M_FLD_ZX3', oStruZX5, /*bLinePre*/, /*{|oModelZX4| ValLinha(oModelZX4)}*/, /*bPreVal*/,/*{|oModel| ValLinha(oModel)}*/, /*BLoad*/ )
@@ -575,7 +575,7 @@ Static Function ExecMarca(cAliasTRB, cMarca)
         MsgAlert("Nenhum título foi selecionado. A geração não será realizada.", "Atenção")
         Return .F.
     EndIf
-
+    
     DbSelectArea("SM2")
     SM2->(DbSetOrder(1)) 
     SM2->(DbSeek(DtoS(dDataD1), .T.))
@@ -613,6 +613,14 @@ Static Function ExecMarca(cAliasTRB, cMarca)
             ZX5->(DbGoTo((cAliasTRB)->REC_ZX5))
 
             oItem := JsonObject():New()
+
+            DbSelectArea("ZX3")
+            ZX3->(DbSetOrder(1))
+            If ZX3->(DbSeek(ZX5->ZX5_FILIAL + ZX5->ZX5_CODIGO))
+                oItem['BLOQUEIO_PAGAMENTO'] := ZX3->ZX3_BLQPAG // ERRO AQUI! oItem ainda não existe.
+            Else
+                oItem['BLOQUEIO_PAGAMENTO'] := "2" 
+            EndIf
             
             Iif(!Empty(ZX5->ZX5_FILIAL),     oItem['FILIAL_TITULO']   := ZX5->ZX5_FILIAL,            Nil)
             Iif(!Empty(ZX5->ZX5_PREFIX),     oItem['PREFIXO_TITULO']  := Upper(ZX5->ZX5_PREFIX),     Nil)
@@ -676,3 +684,67 @@ ______________________________________________________________________________
 */
 User Function MnuVazio()
 Return {}
+
+/*
+______________________________________________________________________________
+| Função    | U_CNE01Cmt                                                      |
+| Descrição | Intercepta o Commit padrão do MVC. Grava o modelo e, em caso    |
+|           | de sucesso, aciona a atualização da flag de bloqueio na SE2.    |
+|___________|_________________________________________________________________|
+*/
+User Function CNE01Cmt(oModel)
+    // 1. Executa a gravação padrão do MVC (ZX3, ZX4, ZX5, ZX6)
+    Local lRet := FWFormCommit(oModel)
+    
+    // 2. Se o contrato gravou com sucesso, atualiza o financeiro
+    If lRet
+        U_AtuSE2Blq(oModel)
+    EndIf
+    
+Return lRet
+
+/*
+______________________________________________________________________________
+| Função    | U_AtuSE2Blq                                                     |
+| Descrição | Varre a SE2 buscando os títulos em aberto atrelados ao contrato |
+|           | e replica o campo ZX3_BLOQPAG para o E2_ZZBLQPG.                |
+|___________|_________________________________________________________________|
+*/
+User Function AtuSE2Blq(oModel)
+    Local oModelZX3 := oModel:GetModel('ID_M_FLD_ZX3')
+    Local cContrato := oModelZX3:GetValue('ZX3_CODIGO')
+    Local cBloqPag  := oModelZX3:GetValue('ZX3_BLQPAG')
+    Local cAliasSE2 := GetNextAlias()
+    Local cQuery    := ""
+
+    // Tratamento de segurança caso o campo venha vazio
+    If Empty(cBloqPag)
+        cBloqPag := "2" // Assume o padrão "Não"
+    EndIf
+
+    // Busca diretamente na SE2 os títulos atrelados ao contrato que já foram gerados e estão em aberto
+    cQuery := "SELECT R_E_C_N_O_ AS RECNO_SE2 FROM " + RetSqlName("SE2")
+    cQuery += " WHERE E2_ZZCONTR = '" + cContrato + "'"
+    cQuery += " AND E2_SALDO > 0"
+    cQuery += " AND D_E_L_E_T_ = ' '"
+    
+    cQuery := ChangeQuery(cQuery)
+    TCQuery cQuery New Alias (cAliasSE2)
+
+    DbSelectArea("SE2")
+    While !(cAliasSE2)->(Eof())
+        SE2->(DbGoTo((cAliasSE2)->RECNO_SE2))
+
+        // Atualiza a tabela apenas se a flag estiver diferente (evita RecLock desnecessário)
+        If SE2->E2_ZZBLQPG != cBloqPag
+            RecLock("SE2", .F.)
+            SE2->E2_ZZBLQPG := cBloqPag
+            SE2->(MsUnlock())
+        EndIf
+
+        (cAliasSE2)->(DbSkip())
+    EndDo
+
+    (cAliasSE2)->(DbCloseArea())
+
+Return .T.
