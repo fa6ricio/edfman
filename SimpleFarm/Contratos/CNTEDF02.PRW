@@ -183,7 +183,7 @@ User Function gravaDados(oJsonReq)
                         If ZX6->(DbSeek(PadR(oItemReq['FILIAL_TITULO'], TamSx3("ZX6_FILIAL")[1]) + PadR(upper(oItemReq['NUMERO_CONTRATO']), TamSx3("ZX6_CODIGO")[1])))
                             While !ZX6->(Eof()) .And. ZX6->ZX6_FILIAL == PadR(oItemReq['FILIAL_TITULO'], TamSx3("ZX6_FILIAL")[1]) .And. ZX6->ZX6_CODIGO == PadR(upper(oItemReq['NUMERO_CONTRATO']), TamSx3("ZX6_CODIGO")[1])
                                 
-                                If ZX6->ZX6_SLDCES > 0 
+                                If ZX6->ZX6_SLDCES > 0 .And. AllTrim(Upper(ZX6->ZX6_TIPO)) == "CEDENTE"
                                     // Parceiro com saldo encontrado! O título vai para ele.
                                     cForneceAtu := ZX6->ZX6_FORNEC
                                     cLojaAtu    := ZX6->ZX6_LOJA
