@@ -19,6 +19,7 @@ User Function EnvBxaSF(nValMov, dDataMov, cNumPag, cTipoMov)
     Local cUrlBase  := ""
     Local cPath     := ""
     Local nPosBarra := 0
+    Local aHeader   := {}
     
     Local cJsonPost := ""
     Local cResponse := ""
@@ -73,13 +74,16 @@ User Function EnvBxaSF(nValMov, dDataMov, cNumPag, cTipoMov)
 
     cJsonPost := oJsonReq:ToJson()
 
+    // Executa chamada HTTP REST
     oRest := FWRest():New(cUrlBase)
     oRest:SetPath(cPath)
     oRest:SetPostParams(cJsonPost)
     
-    oRest:SetHeader("Content-Type", "application/json")
+    // Monta o array de cabeçalhos
+    AAdd(aHeader, "Content-Type: application/json")
 
-    If oRest:Post()
+    // Passa o array de cabeçalhos como parâmetro da função Post()
+    If oRest:Post(aHeader)
         cResponse := oRest:GetResult()
         
         oJsonRet:ToObj(cResponse)
