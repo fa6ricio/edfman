@@ -89,7 +89,6 @@ User Function gravaDados(oJsonReq)
     Local aVetSE2    := {}
     Local cMsgError  := ""
     Local lRet       := .T.  
-    Local cNatureza  := getMv('MV_ZZNTDUP')
     Local nValorOrig := 0
     Local nTaxaPtax  := 0
     Local nMoedaTit  := 1    
@@ -104,6 +103,8 @@ User Function gravaDados(oJsonReq)
     Local cLojaAtu       := ""
     Local cNomForAtu     := ""
     Local nRecZX6        := 0
+    Local cNatNF         :=SuperGetMv("MV_ZZNATNF",.F.,'0126 ')
+    Local cNatPA         :=SuperGetMv("MV_ZZNATPA",.F.,'0125 ')
 
     Private lAutoErrNoFile := .T. 
     Private lMsHelpAuto    := .T. 
@@ -204,7 +205,11 @@ User Function gravaDados(oJsonReq)
                         iif(oItemReq['PREFIXO_TITULO'] != nil, aAdd(aVetSE2,{'E2_PREFIXO' ,upper(oItemReq['PREFIXO_TITULO']),NIL}),nil)
                         iif(oItemReq['PARCELA_TITULO'] != nil, aAdd(aVetSE2,{'E2_PARCELA' ,upper(oItemReq['PARCELA_TITULO']),NIL}),nil)
                         iif(oItemReq['TIPO_TITULO']    != nil, aAdd(aVetSE2,{'E2_TIPO'    ,upper(oItemReq['TIPO_TITULO'])   ,NIL}),nil)
-                        iif(oItemReq['NATUREZA']       != nil, aAdd(aVetSE2,{'E2_NATUREZ' ,upper(oItemReq['NATUREZA'])      ,NIL}), aAdd(aVetSE2,{'E2_NATUREZ' ,cNatureza, NIL}))
+                        IF Upper(oItemReq['TIPO_TITULO']) == "PA"
+                            aAdd(aVetSE2,{'E2_NATUREZ' ,cNatPA, NIL})
+                        Else
+                            aAdd(aVetSE2,{'E2_NATUREZ' ,cNatNF, NIL})
+                        EndIF
                         
                         AAdd(aVetSE2,{'E2_FORNECE', cForneceAtu, NIL})
                         AAdd(aVetSE2,{'E2_LOJA'   , cLojaAtu   , NIL})
@@ -243,9 +248,15 @@ User Function gravaDados(oJsonReq)
                                 If Empty(SA2->A2_BANCO) .Or. Empty(SA2->A2_AGENCIA) .Or. Empty(SA2->A2_NUMCON)
                                     cMsgError := "Fornecedor\Loja: " + cForneceAtu + "\" + cLojaAtu + " nao possui dados bancarios cadastrados para a geração do PA."
                                 Else
-                                    AAdd(aVetSE2, {'E2_FORBCO', SA2->A2_BANCO,   NIL})
-                                    AAdd(aVetSE2, {'E2_FORAGE', SA2->A2_AGENCIA, NIL})
-                                    AAdd(aVetSE2, {'E2_FORCTA', SA2->A2_NUMCON,  NIL})
+                                    AAdd(aVetSE2, {'E2_FORBCO'      , SA2->A2_BANCO     ,NIL})
+                                    AAdd(aVetSE2, {'E2_FORAGE'      , SA2->A2_AGENCIA   ,NIL})
+                                    AAdd(aVetSE2, {'E2_FORCTA'      , SA2->A2_NUMCON    ,NIL})
+                                    
+                                    //Tem que definir qual o banco será usado para pagar com os dados abaixo
+                                    aAdd(aVetSE2, {"CBANCOADT" 	    , SA2->A2_BANCO		,Nil})
+                                    aAdd(aVetSE2, {"CAGENCIAADT"	, SA2->A2_AGENCIA	,Nil})
+                                    aAdd(aVetSE2, {"CNUMCON" 	    , SA2->A2_NUMCON	,Nil})
+		
                                 EndIf
                                 
                             Else

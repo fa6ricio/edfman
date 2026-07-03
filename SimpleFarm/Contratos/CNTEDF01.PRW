@@ -664,7 +664,8 @@ Static Function ExecMarca(cAliasTRB, cMarca)
                     ZX5->(DbGoTo((cAliasTRB)->REC_ZX5))
                     
                     RecLock("ZX5", .F.)
-                    ZX5->ZX5_STATUS := "2" 
+                        ZX5->ZX5_STATUS := "2" 
+                        ZX5_PTAX:=nTaxaPtax
                     ZX5->(MsUnlock())
                 EndIf
                 (cAliasTRB)->(DbSkip())
