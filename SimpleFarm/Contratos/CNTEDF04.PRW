@@ -43,7 +43,7 @@ User Function EnvBxaSF(nValMov, dDataMov, cNumPag, cTipoMov)
     
     // --- Atualização da ZX5 (Títulos Fixados do Contrato) ---
     DbSelectArea("ZX5")
-    ZX5->(DbSetOrder(3)) // Chave aproximada de busca: ZX5_FILIAL + ZX5_PREFIX + ZX5_NUM + ZX5_PARC + ZX5_TIPO
+    ZX5->(DbSetOrder(2)) // Chave aproximada de busca: ZX5_FILIAL + ZX5_PREFIX + ZX5_NUM + ZX5_PARC + ZX5_TIPO
     If ZX5->(DbSeek(xFilial("ZX5") + SE2->E2_PREFIXO + SE2->E2_NUM + SE2->E2_PARCELA + SE2->E2_TIPO))
         
         RecLock("ZX5", .F.)
