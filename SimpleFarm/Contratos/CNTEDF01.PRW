@@ -21,6 +21,7 @@ Private oBrowse 	:= FwMBrowse():New()
 
 oBrowse:SetAlias('ZX3')
 oBrowse:SetDescripton("Contratos de Compra deAlgodao")
+oBrowse:SetMenuDef('CNTEDF01')
 //oBrowse:AddLegend( "ZX3->ZX3_TIPCLE == '1'", "GREEN", "Aberto" )
 //oBrowse:AddLegend( "ZX3->ZX3_TIPCLE == '2'", "RED",   "Gerado" )
 oBrowse:SetAmbiente(.F.)
@@ -48,11 +49,11 @@ Local aMenu :=	{}
 	ADD OPTION aMenu TITLE 'Pesquisar'  		ACTION 'PesqBrw'       		            OPERATION 1 ACCESS 0
 	ADD OPTION aMenu TITLE 'Visualizar' 		ACTION 'VIEWDEF.CNTEDF01'	            OPERATION 2 ACCESS 0
 	//ADD OPTION aMenu TITLE 'Incluir'    		ACTION 'VIEWDEF.CNTEDF01' 	            OPERATION 3 ACCESS 0
-	//ADD OPTION aMenu TITLE 'Alterar'    		ACTION 'VIEWDEF.CNTEDF01' 	            OPERATION 4 ACCESS 0
+	ADD OPTION aMenu TITLE 'Alterar'    		ACTION 'VIEWDEF.CNTEDF01' 	            OPERATION 4 ACCESS 0
 	//ADD OPTION aMenu TITLE 'Excluir'    		ACTION 'VIEWDEF.CNTEDF01' 	            OPERATION 5 ACCESS 0
 	ADD OPTION aMenu TITLE 'Imprimir'   		ACTION 'VIEWDEF.CNTEDF01'	            OPERATION 8 ACCESS 0
 	//ADD OPTION aMenu TITLE 'Copiar'     		ACTION 'VIEWDEF.CNTEDF01'	            OPERATION 9 ACCESS 0
-	ADD OPTION aMenu TITLE 'Gerar Titulos'     ACTION 'U_GeraMkZX5("","","")'           OPERATION 10 ACCESS 0
+	ADD OPTION aMenu TITLE 'Gerar Titulos'     ACTION 'U_GeraMkZX5("","","",.T.)'           OPERATION 10 ACCESS 0
 
 Return(aMenu)
 
@@ -350,7 +351,7 @@ ______________________________________________________________________________
 |           | pendentes de geração na SE2.                                    |
 |___________|_________________________________________________________________|
 */
-User Function GeraMkZX5(cTitNum, cTitParc, cTitStatus)
+User Function GeraMkZX5(cTitNum, cTitParc, cTitStatus, lFromBrowse)
     Local oMark
     Local oDlg
     Local cAliasTRB  := GetNextAlias()
@@ -379,6 +380,7 @@ User Function GeraMkZX5(cTitNum, cTitParc, cTitStatus)
     Default cTitNum    := ""
     Default cTitParc   := ""
     Default cTitStatus := ""
+    Default lFromBrowse := .F.
 
     If !Empty(cTitNum) 
         If cTitStatus == "2"
@@ -388,9 +390,14 @@ User Function GeraMkZX5(cTitNum, cTitParc, cTitStatus)
         lDireto := .T. 
     EndIf
 
-    If Type("ALTERA") == "L" 
-        lIsAltera := ALTERA
+    If lFromBrowse 
+        lIsAltera := .F.
+    Else
+        lIsAltera := .T. 
     EndIf
+    //If Type("ALTERA") == "L" 
+        //lIsAltera := .T.
+    //EndIf
 
     If lIsAltera
         If Empty(ZX3->ZX3_CODIGO)
@@ -562,6 +569,12 @@ Static Function ExecMarca(cAliasTRB, cMarca)
 
     Local dDataD1   := dDataBase - 1 
     Local nTxDolar  := 0
+    
+    // Variáveis para o ParamBox do PA
+    Local aParamPA  := {}
+    Local cBanco    := Space(TamSx3("E2_FORBCO")[1])
+    Local cAgencia  := Space(TamSx3("E2_FORAGE")[1])
+    Local cConta    := Space(TamSx3("E2_FORCTA")[1])
 
     (cAliasTRB)->(DbGoTop())
     While !(cAliasTRB)->(Eof())
@@ -617,9 +630,9 @@ Static Function ExecMarca(cAliasTRB, cMarca)
             DbSelectArea("ZX3")
             ZX3->(DbSetOrder(1))
             If ZX3->(DbSeek(ZX5->ZX5_FILIAL + ZX5->ZX5_CODIGO))
-                oItem['BLOQUEIO_PAGAMENTO'] := ZX3->ZX3_BLQPAG // ERRO AQUI! oItem ainda não existe.
+                oItem["BLOQUEIO_PAGAMENTO"] := ZX3->ZX3_BLQPAG 
             Else
-                oItem['BLOQUEIO_PAGAMENTO'] := "2" 
+                oItem["BLOQUEIO_PAGAMENTO"] := "2" 
             EndIf
             
             Iif(!Empty(ZX5->ZX5_FILIAL),     oItem['FILIAL_TITULO']   := ZX5->ZX5_FILIAL,            Nil)
@@ -634,14 +647,38 @@ Static Function ExecMarca(cAliasTRB, cMarca)
             Iif(!Empty(ZX5->ZX5_EMISSA),     oItem['DATA_EMISSAO']    := DtoS(ZX5->ZX5_EMISSA),      Nil)
             Iif(!Empty(ZX5->ZX5_VENCTO),     oItem['DATA_VENCIMENTO'] := DtoS(ZX5->ZX5_VENCTO),      Nil)
             Iif(ZX5->ZX5_VLRTIT > 0,         oItem['VALOR_TITULO']    := cValToChar(ZX5->ZX5_VLRTIT), Nil)
-            
-            oItem['HISTORICO']              := "TITULO GERADO MANUALMENTE"
-            oItem['BANCO']                  := ""
-            oItem['AGENCIA']                := ""
-            
-            oItem['MOEDA']           := 2 
-            oItem['PTAX']            := cValToChar(nTaxaPtax) 
-            oItem['ORIGEM']          := "MARKBROWSE"
+            Iif(!Empty(ZX5->ZX5_IDTIT),      oItem['ID_TITULO']       := ZX5->ZX5_IDTIT,             Nil)
+
+            oItem['HISTORICO'] := "TITULO GERADO MANUALMENTE"
+            oItem['MOEDA']     := ZX5->ZX5_MOEDA
+            oItem['PTAX']      := cValToChar(nTaxaPtax) 
+            oItem['ORIGEM']    := "MARKBROWSE"
+
+            If Upper(Alltrim(ZX5->ZX5_TIPO)) == "PA"
+
+                aParamPA := {}
+                cBanco   := Space(TamSx3("A6_COD")[1])
+                cAgencia := Space(TamSx3("A6_AGENCIA")[1])
+                cConta   := Space(TamSx3("A6_NUMCON")[1])
+
+                AAdd(aParamPA, {1, "Banco Pagador"   , cBanco  , "", "", "SA6", "", 50, .F.})
+                AAdd(aParamPA, {1, "Agência Pagadora", cAgencia, "", "", ""   , "", 50, .F.})
+                AAdd(aParamPA, {1, "Conta Pagadora"  , cConta  , "", "", ""   , "", 50, .F.})
+
+                If ParamBox(aParamPA, "Conta Pagadora (Empresa) - Titulo: " + AllTrim(ZX5->ZX5_NUMERO), )
+                    oItem['BANCO_PAG']   := MV_PAR01
+                    oItem['AGENCIA_PAG'] := MV_PAR02
+                    oItem['CONTA_PAG']   := MV_PAR03
+                Else
+                    MsgInfo("Dados bancários não informados. Geração do título " + AllTrim(ZX5->ZX5_NUMERO) + " foi ignorada.", "Aviso")
+                    (cAliasTRB)->(DbSkip())
+                    Loop 
+                EndIf
+            Else
+                oItem['BANCO_PAG']   := ""
+                oItem['AGENCIA_PAG'] := ""
+                oItem['CONTA_PAG']   := ""
+            EndIf
 
             AAdd(aInclui, oItem)
             nGerados++
@@ -664,8 +701,8 @@ Static Function ExecMarca(cAliasTRB, cMarca)
                     ZX5->(DbGoTo((cAliasTRB)->REC_ZX5))
                     
                     RecLock("ZX5", .F.)
-                        ZX5->ZX5_STATUS := "2" 
-                        ZX5_PTAX:=nTaxaPtax
+                    ZX5->ZX5_STATUS := "2" 
+                    ZX5->ZX5_PTAX   := nTaxaPtax
                     ZX5->(MsUnlock())
                 EndIf
                 (cAliasTRB)->(DbSkip())
@@ -673,10 +710,13 @@ Static Function ExecMarca(cAliasTRB, cMarca)
         Else
             MsgStop("Houve um erro na geração dos títulos: " + aRet[2], "Erro")
         EndIf
+    Else
+        MsgAlert("Nenhum título validado para geração.", "Aviso")
     EndIf
 
     FreeObj(oJsonReq)
 Return .T.
+
 /*
 ______________________________________________________________________________
 | Função    | U_MnuVazio                                                      |

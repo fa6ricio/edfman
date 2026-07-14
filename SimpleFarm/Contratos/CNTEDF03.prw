@@ -163,7 +163,7 @@ Static Function gravaDados(oJsonReq)
                             iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_VLRTOT := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
                             iif(oItemReq['VALORTOTAL']     != nil, ZX3->ZX3_SALDO  := val(cValToChar(oItemReq['VALORTOTAL'])) , nil)
                             ZX3->ZX3_SLDPER := 100
-                            ZX3->ZX3_BLQPAG := 1
+                            ZX3->ZX3_BLQPAG := "1"
                             iif(oItemReq['COTACAOFIXA']    != nil, ZX3->ZX3_COTAFI := val(cValToChar(oItemReq['COTACAOFIXA'])), nil)
 
                             ZX3->(MsUnlock())
@@ -239,6 +239,7 @@ WSMETHOD PUT AlterarContrato WSRECEIVE id WSSERVICE ContratosAlg
     Local cQueryZX6  := ""
     Local cAliasZX6  := GetNextAlias()
     Local nParc      := 0
+    Local cFilTit    := ""
 
     FWLogMsg("INFO",, "ContratosAlg", "AlterarContrato", "", "01", "Inicio da Alteracao CODIGO: " + cValToChar(::id))
     Self:SetContentType('application/json')
@@ -261,9 +262,28 @@ WSMETHOD PUT AlterarContrato WSRECEIVE id WSSERVICE ContratosAlg
         oItemReq := oJsonReq 
     EndIf
 
+    IF Alltrim(oItemReq['FILIAL_TITULO']) = '01'
+        cFilTit:= '0101'
+    ElseIF Alltrim(oItemReq['FILIAL_TITULO'])  = '10'
+        cFilTit:= '0110'
+    ElseIF Alltrim(oItemReq['FILIAL_TITULO'])  = '09'
+        cFilTit:= '0109'
+    ElseIF Alltrim(oItemReq['FILIAL_TITULO'])  = '13'
+        cFilTit:= '0113'
+    ElseIF Alltrim(oItemReq['FILIAL_TITULO'])  = '11'
+        cFilTit:= '0111'    
+    Else
+        Self:setStatus(400)
+        oJsonRet['STATUS_CODE'] := "400"
+        oJsonRet['MENSAGEM']    := "FILIAL_TITULO invalida no JSON."
+        Self:SetResponse(EncodeUTF8(oJsonRet:ToJson()))
+        Return .F.
+    EndIf
+
     cQuery := "SELECT R_E_C_N_O_ AS RECNO_ZX3, ZX3_FILIAL, ZX3_CODIGO "
     cQuery += "FROM " + RetSqlName("ZX3") + " ZX3 "
-    cQuery += "WHERE ZX3_CODIGO = '" + ::id + "' "
+    cQuery += "WHERE ZX3_FILIAL = '" + cFilTit + "' "
+    cQuery += "AND ZX3_CODIGO = '" + PadR(upper(oItemReq['CODIGO']), TamSx3("ZX3_CODIGO")[1]) + "' "
     cQuery += "AND D_E_L_E_T_ = ' ' "
     
     cQuery := ChangeQuery(cQuery)
@@ -350,7 +370,11 @@ WSMETHOD PUT AlterarContrato WSRECEIVE id WSSERVICE ContratosAlg
                         Else
                             ZX6->ZX6_FORNEC := PadR(oParceiro['CODPAR'], TamSx3("ZX6_FORNEC")[1])
                         EndIf
-                        
+
+                        iif(oParceiro['TIPO']      != nil, ZX6->ZX6_TIPO   := cValToChar(oParceiro['TIPO'])           , nil)
+                        iif(oParceiro['VLRCESSAO'] != nil, ZX6->ZX6_VLRCES := val(cValToChar(oParceiro['VLRCESSAO'])), nil)
+                        iif(oParceiro['VLRCESSAO'] != nil, ZX6->ZX6_SLDCES := val(cValToChar(oParceiro['VLRCESSAO'])), nil)
+
                         ZX6->(MsUnlock())
                     EndIf
                 Next nParc

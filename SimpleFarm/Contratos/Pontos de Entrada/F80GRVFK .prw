@@ -26,7 +26,7 @@ User Function F80GRVFK()
         
         // Dispara a regra centralizada no CNTEDF04 passando os dados da baixa.
         // O Protheus mantém a SE5 e a SE2 devidamente posicionadas neste exato momento da transação.
-        U_EnvBxaSF(SE5->E5_VALOR, SE5->E5_DATA, SE5->E5_DOCUMEN, "Baixa")
+        U_EnvBxaSF(SE2->E2_VALOR, SE2->E2_BAIXA, SE5->E5_DOCUMEN, "Baixa", SE2->E2_ZZIDTIT)
         
     EndIf
 

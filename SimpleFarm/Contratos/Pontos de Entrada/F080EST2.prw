@@ -22,7 +22,7 @@ User Function F080EST2()
 
     // Como é um estorno, a data do movimento passa a ser a data base atual do sistema (dDataBase).
     // O SE5->E5_VALOR contém o valor que está sendo devolvido ao título.
-    U_EnvBxaSF(SE5->E5_VALOR, dDataBase, SE5->E5_DOCUMEN, "Estorno")
+    U_EnvBxaSF(SE2->E2_VALOR, ddatabase, SE5->E5_DOCUMEN, "Estorno", SE2->E2_ZZIDTIT)
 
     RestArea(aAreaSE5)
     RestArea(aAreaSE2)
