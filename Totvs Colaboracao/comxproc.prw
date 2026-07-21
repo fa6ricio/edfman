@@ -29,54 +29,58 @@
 
 User Function COMXPROC(__NFISCAL)
 
-	Local cErro	 := ""
-	Local cAviso := ""
-	Local lRet 	 := .T.
+	Local cErro      := ""
+	Local cAviso     := ""
+	Local lRet       := .T.
 	Local oXML
-	Local cPath  := GetMv("MV_XDIRNFE", , "")
-	Local aArea := GetArea()
-	Local cAliasXml := Alltrim(SDS->DS_ARQUIVO)
-	Local cXML := SubStr(SDS->DS_ARQUIVO,1,Len(Alltrim(SDS->DS_ARQUIVO))-4)
-	Local cCFOP := ''
-	Local cProd := ''
-	Local n_tam_det := 0
-	Local cAdic := ''
-	Local cContra := 'P'
-	Local lContra := .f.
-	Local lAchou := .f.  
-	Local cDp := ''
-	Local nx        := 0
-	Local cContraPad := ""//GetNewPar("MV_XCONPAD","")
-	Local cGrupo := ''
+	Local aArea      := GetArea()
+	Local cXML       := ""
+	Local cCFOP      := ''
+	Local cProd      := ''
+	Local n_tam_det  := 0
+	Local cAdic      := ''
+	Local cContra    := 'P'
+	Local lContra    := .f.
+	Local lAchou     := .f.
+	Local cDp        := ''
+	Local nx         := 0
+	Local cContraPad := "" //GetNewPar("MV_XCONPAD","")
 
-	Private cContrato 	:= ''
-	Private cTexto := "" 
+	Private cContrato   := ''
+	Private cTexto      := ""
 	Private cEncodeUTF8 := ""
 	Private cDecodeUTF8 := ""
-	Private cMensagem := ""
-	Private cArquiv   := "" 
+	Private cMensagem   := ""
+	Private cArquiv     := ""
 
 	Public __NFISCAL   := Space(9)
-	Public __TIPONF := Space(1)
+	Public __TIPONF    := Space(1)
 	Public _cDifPCxNFE := ''
 		
 	If Type("__aXML")== "U"
 		Public __aXML  :=  {}
 	EndIf
 
-	DBSelectArea("SDS")
-	SDS->(DbSetOrder(1))
-	cAliasXml := Alltrim(SDS->DS_ARQUIVO)
-	cXML      := SubStr(SDS->DS_ARQUIVO,1,Len(Alltrim(SDS->DS_ARQUIVO))-4)
+	CKO->(DbSetOrder(1))
+
+	If !CKO->(DbSeek(PadR(SDS->DS_ARQUIVO, FWSX3Util():GetFieldStruct("CKO_ARQUIV")[3])))
+		ApMsgStop("ID de conversão " + AllTrim(SDS->DS_ARQUIVO) + " não localizado na tabela CKO.", "COMXPROC")
+		Return .F.
+	EndIf	
+	
+	If Empty(CKO->CKO_ARQXML)
+		cXML := CKO->CKO_ARQUIV
+	Else
+		cXML := CKO->CKO_ARQXML
+	EndIf
+
+	cXML := RetFileName(AllTrim(cXML))
 	nPos := aScan(__aXML, {|x| Alltrim(x[1]) == Alltrim(cXML)})
 
 	If  nPos == 0
 		
 		Aadd(__aXML,{cXML})
 	
-		DBSelectArea("SDS")
-		SDS->(DbSetOrder(1))
-
 		If __NFISCAL == SDS->DS_DOC
 			__NFISCAL := Nil
 			Return .t.
@@ -92,30 +96,8 @@ User Function COMXPROC(__NFISCAL)
 			RestArea(aArea)
 			Return( lRet )
 		EndIf
-
-		//Alteracao por Fabricio Antunes para validar grupo de fornecedores se segue a custmizacao ou nao
-
-		cGrupo:=SA2->A2_XDESCGR
-
-		IF 	!Empty(cGrupo)	
-			DBSelectArea("SZH")
-			SZH->(DbSetOrder(1))
-			IF SZH->(DbSeek(xFilial("SZH")+cGrupo))
-				IF SZH->ZH_XCONTRA = 'N'
-					RestArea(aArea)
-					Return( lRet )
-				EndIF
-			EndIF
-
-		EndIF
-
-		//Final alteração Fabrício Antunes
-
 		
-		cArqXml    := Lower(cPath+cAliasXml)
-		cArqXml2   := Lower("\XML\NF_REMESSA\"+cAliasXml)
-
-		oXML := XMLParserFile( cPath+cAliasXml, "_",@cErro,@cAviso)
+		oXML := XMLParser(CKO->CKO_XMLRET, "_",@cErro,@cAviso)
 
 		If !( Empty(cErro) .And. Empty(cAviso) .And. oXml <> Nil)
 			If	!Empty(cErro)
@@ -183,7 +165,6 @@ User Function COMXPROC(__NFISCAL)
 			Next  
 			//caso não encontre o contrato, deverá informar aqui o código do produto que deverá ser usado na importação
 			cContrato := PadR(cContra +'-'+ cDP, TamSX3("B1_COD")[1])
-			// MsgInfo("Contrato encontrado no XML: "+cContrato,"ATENÇÃO!")
 			SB1->(DbSetOrder(1))
 			If !SB1->(DbSeek(xFilial("SB1")+cContrato))
 				if !empty(cContraPad)
@@ -192,14 +173,12 @@ User Function COMXPROC(__NFISCAL)
 					endif
 				endif
 				if empty(cContrato) .OR. !SB1->(DbSeek(xFilial("SB1")+cContrato))
-					// MsgInfo("Favor definir o contrato.","ATENÇÃO!")
 					cContrato := AllTrim(ValidPerg())
 					cContraPad := cContrato
 				endif
 			Endif
 
 			If !empty(cContrato) .AND. SB1->(DbSeek(xFilial("SB1")+cContrato))
-				// MsgInfo("Contrato definido: "+cContrato,"ATENÇÃO!")
 				SDT->(DbSetOrder(1))
 				If SDT->(DbSeek(xFilial("SDT")+SDS->(DS_CNPJ+DS_FORNEC+DS_LOJA+DS_DOC+DS_SERIE)))
 					RecLock("SDT",.F.)
@@ -239,9 +218,8 @@ User Function COMXPROC(__NFISCAL)
 		EndIf
 		
 		If	SDS->DS_TIPO == 'N'
-			//If cCFOP == "501" // NF Remessa // 24/03/17 - Luis Felipe
-			If	cCFOP $ "501|502" // NF Remessa
-				COPY FILE &cArqXml To &cArqXml2
+			If	cCFOP $ "501|502" // NF Remessa 24/03/17 - Luis Felipe
+				MemoWrite("\xml\nf_remessa\" + Lower(cXML) + ".xml", CKO->CKO_XMLRET)
 				lRet := u_LXmlRem(cXML,cContra,cDP)
 				If	lRet
 					RecLock("SDS",.F.)
@@ -265,6 +243,16 @@ User Function COMXPROC(__NFISCAL)
 
 Return( lRet )
 
+
+
+/*/{Protheus.doc} ValidPerg
+Função responsável por validar o número do contrato, caso não seja encontrado, será solicitado ao usuário que informe o mesmo.
+@type function
+@version  
+@author 
+@since 7/10/2026
+@return variant, return_description
+/*/
 Static Function ValidPerg()
 
 	Local aPergs  := {} As Array

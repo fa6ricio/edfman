@@ -57,7 +57,7 @@ Endif
 cData	 := CtoD('01/'+SubStr(MV_PAR01,1,2)+'/'+SubStr(MV_PAR01,3,4))
 cDataIni := DtoS(cData)
 cDataFim := DtoS(LastDay(cData))
-cDataSB9 := DtoS(LastDay(CtoD('01/'+If(SubStr(MV_PAR01,1,2)='01','12',StrZero(Val(SubStr(MV_PAR01,1,2))-1,2))+'/'+If(SubStr(MV_PAR01,1,2)='01',Str(Val(SubStr(MV_PAR01,3,4))-1,4),SubStr(MV_PAR01,3,4))))) 
+cDataSB9 := DtoS(LastDay(CtoD('01/'+If(SubStr(MV_PAR01,1,2)='01','12',StrZero(Val(SubStr(MV_PAR01,1,2))-1,2))+'/'+If(SubStr(MV_PAR01,1,2)='01',Str(Val(SubStr(MV_PAR01,3,4))-1,4),SubStr(MV_PAR01,3,4)))))
 
 cQry := "SELECT DISTINCT B2_FILIAL, B2_COD, B2_LOCAL, B1_TIPO, B1_GRUPO, B1_DESC, B1_UM, B1_SEGUM, B1_CONTA, B1_CONV, B1_TIPCONV, BM_DESC, "+CENT
 
@@ -74,8 +74,8 @@ cQry += "(ISNULL(SB9.B9_QINI,0)  + ISNULL(SD1.D1_QUANT,0)  + ISNULL(SD3.D3_QTDE1
 //cQry += "(ISNULL(SB9.B9_VINI1,0) + ISNULL(SD1.D1_CUSTO,0)  + ISNULL(SD3.D3_CUSTE1,0) - (ISNULL(SD2.D2_CUSTO1,0) + ISNULL(SD3.D3_CUSTS1,0))) - (ISNULL(D3_CUSTTE1,0) - ISNULL(D3_CUSTTS1,0)) AS VSLD1, "+CENT 07/08/17 - Luis Felipe
 cQry += "(ISNULL(SB9.B9_VINI1,0) + ISNULL(SD1.D1_CUSTO,0)  + ISNULL(SD3.D3_CUSTE1,0) - ((ISNULL(SD2.D2_CUSTO1,0) + ISNULL(SD3.D3_CUSTS1,0)))) AS VSLD1, "+CENT
 
-cQry += "ISNULL(B9_QINITRA,0)   + ISNULL(D3_QTDTE1,0)	 - ISNULL(D3_QTDTS1,0)  AS QTRANSITO, "+CENT 
-cQry += "ISNULL(B9_VINITRA,0)   + ISNULL(D3_CUSTTE1,0)	 - ISNULL(D3_CUSTTS1,0) AS VTRANSITO, "+CENT 
+cQry += "ISNULL(B9_QINITRA,0)   + ISNULL(D3_QTDTE1,0)	 - ISNULL(D3_QTDTS1,0)  AS QTRANSITO, "+CENT
+cQry += "ISNULL(B9_VINITRA,0)   + ISNULL(D3_CUSTTE1,0)	 - ISNULL(D3_CUSTTS1,0) AS VTRANSITO, "+CENT
 
 cQry += "ISNULL(SB9.B9_VINI5,0) + ISNULL(SD1.D1_CUSTO5,0) + ISNULL(SD3.D3_CUSTE5,0) - (ISNULL(SD2.D2_CUSTO5,0) + ISNULL(SD3.D3_CUSTS5,0)) - (ISNULL(D3_CUSTTE5,0) - ISNULL(D3_CUSTTS5,0)) AS VSLD5, "+CENT
 
@@ -83,9 +83,9 @@ cQry += "SZE.ZE_NOME, B2_CM5"+CENT
 cQry += "FROM "+CENT
 cQry += "(SELECT DISTINCT B2_COD, B2_FILIAL,B2_LOCAL,B1_TIPO, B1_GRUPO, B1_DESC, B1_UM, B1_SEGUM, B1_CONTA, B1_CONV, B1_TIPCONV, BM_DESC, B2_CM5 "+CENT
 cQry += "FROM "+RetSqlName("SB1")+" SB1, "+RetSqlName("SB2")+" SB2, "+RetSqlName("SBM")+" SBM "+CENT
-cQry += "WHERE B1_COD = B2_COD "+CENT              
-cQry += "AND Len(Rtrim(B2_LOCAL)) = 2 "+CENT   
-cQry += "AND B1_GRUPO = BM_GRUPO "+CENT   
+cQry += "WHERE B1_COD = B2_COD "+CENT
+cQry += "AND Len(Rtrim(B2_LOCAL)) = 2 "+CENT
+cQry += "AND B1_GRUPO = BM_GRUPO "+CENT
 //
 // Filtros do relatório
 //
@@ -164,10 +164,10 @@ cQry += "GROUP BY SD3.D3_FILIAL,SD3.D3_COD,SD3.D3_LOCAL "+CENT
 cQry += ") AS SD3 "+CENT
 cQry += "ON SB2.B2_FILIAL+SB2.B2_COD+SB2.B2_LOCAL = SD3.D3_FILIAL+SD3.D3_COD+SD3.D3_LOCAL "+CENT
 cQry += "LEFT JOIN "+CENT
-cQry += "(SELECT B9_FILIAL,B9_COD,B9_LOCAL,B9_QINI,B9_VINI1,B9_VINI5, "+CENT      
-cQry += "(SELECT B9_QINI  FROM "+RetSqlName("SB9")+" WHERE SB9.B9_FILIAL = B9_FILIAL AND SB9.B9_COD = B9_COD AND B9_DATA = '"+cDataSB9+"' AND B9_LOCAL = SubString(SB9.B9_LOCAL,1,2)+'01' AND D_E_L_E_T_ = '') AS B9_QINITRA, "+CENT      
-cQry += "(SELECT B9_VINI1 FROM "+RetSqlName("SB9")+" WHERE SB9.B9_FILIAL = B9_FILIAL AND SB9.B9_COD = B9_COD AND B9_DATA = '"+cDataSB9+"' AND B9_LOCAL = SubString(SB9.B9_LOCAL,1,2)+'01' AND D_E_L_E_T_ = '') AS B9_VINITRA, "+CENT      
-cQry += "(SELECT B9_VINI5 FROM "+RetSqlName("SB9")+" WHERE SB9.B9_FILIAL = B9_FILIAL AND SB9.B9_COD = B9_COD AND B9_DATA = '"+cDataSB9+"' AND B9_LOCAL = SubString(SB9.B9_LOCAL,1,2)+'01' AND D_E_L_E_T_ = '') AS B9_VINITRA5 "+CENT      
+cQry += "(SELECT B9_FILIAL,B9_COD,B9_LOCAL,B9_QINI,B9_VINI1,B9_VINI5, "+CENT
+cQry += "(SELECT B9_QINI  FROM "+RetSqlName("SB9")+" WHERE SB9.B9_FILIAL = B9_FILIAL AND SB9.B9_COD = B9_COD AND B9_DATA = '"+cDataSB9+"' AND B9_LOCAL = SubString(SB9.B9_LOCAL,1,2)+'01' AND D_E_L_E_T_ = '') AS B9_QINITRA, "+CENT
+cQry += "(SELECT B9_VINI1 FROM "+RetSqlName("SB9")+" WHERE SB9.B9_FILIAL = B9_FILIAL AND SB9.B9_COD = B9_COD AND B9_DATA = '"+cDataSB9+"' AND B9_LOCAL = SubString(SB9.B9_LOCAL,1,2)+'01' AND D_E_L_E_T_ = '') AS B9_VINITRA, "+CENT
+cQry += "(SELECT B9_VINI5 FROM "+RetSqlName("SB9")+" WHERE SB9.B9_FILIAL = B9_FILIAL AND SB9.B9_COD = B9_COD AND B9_DATA = '"+cDataSB9+"' AND B9_LOCAL = SubString(SB9.B9_LOCAL,1,2)+'01' AND D_E_L_E_T_ = '') AS B9_VINITRA5 "+CENT
 cQry += "FROM "+RetSqlName("SB9")+" SB9 "+CENT
 cQry += "WHERE B9_DATA = '"+cDataSB9+"' "+CENT
 cQry += "AND SB9.D_E_L_E_T_ = '' "+CENT
@@ -206,20 +206,17 @@ Return
 Static Function GeraPlan()
 **************************
 
-Local oExcel
+// Arquivo gerado em temp do AppServer (caminho do server — usado no client HTML)
+// Quando rodar no SmartClient Windows, copiamos para C:\ e usamos ShellExecute
 Local cArq
 Local nArq
 Local cPath
+Local cFileCli
 Local cXml    	:= ""
 Local ncountq := 0
 
-If !ApOleClient("MSExcel")
-	MsgAlert("Microsoft Excel não instalado!")
-	Return
-EndIf
-
 cArq := CriaTrab(Nil, .F.)
-cPath := "C:\TEMP\"
+cPath := GetTempPath()
 Makedir(cPath)
 
 nArq := FCreate(cPath + cArq + ".xml")
@@ -232,19 +229,19 @@ EndIf
 ProcRegua(RecCount("TRB"))
 
 If TRB->(!EOF())
-	
+
 	nLin := 7
 	While !TRB->(EOf())
 		nLin ++
 		TRB->(DbSkip())
 	End
-	
+
 	TRB->(DbGotop())
-	
+
 	While !TRB->(EOf())
-		
+
 		cPeriodo := SubStr(MV_PAR01,1,2)+"/"+SubStr(MV_PAR01,3,4)
-		
+
 		cXml := '<?xml version="1.0"?>'+CENT
 		cXml += '<?mso-application progid="Excel.Sheet"?>'+CENT
 		cXml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"'+CENT
@@ -469,18 +466,18 @@ If TRB->(!EOF())
 		cXml += '    <Cell ss:StyleID="s19"><Data ss:Type="String">Posicao USD</Data></Cell>'+CENT
 		cXml += '    <Cell ss:StyleID="s19"><Data ss:Type="String">Conta Contabil</Data></Cell>'+CENT
 		cXml += '   </Row>'+CENT
-		
+
 		While !TRB->(EOf())
-			
-			ncountq++ 
-			
-			IncProc() 
-			
+
+			ncountq++
+
+			IncProc()
+
 			If	MV_PAR06 == 1 .and. TRB->B9_VINI1 == 0 .and. TRB->VENTRADA == 0 .and. TRB->VSAIDA == 0 .or. !Empty(MV_PAR07) .and. MV_PAR07 <> TRB->B2_FILIAL
 				DbSkip()
-				Loop 
+				Loop
 			EndIf
-			
+
 			If TRB->B1_TIPCONV = 'D'
 				nSldSegum := TRB->QSLD1 / TRB->B1_CONV
 			Else
@@ -502,7 +499,7 @@ If TRB->(!EOF())
 			cXml += '    <Cell ss:StyleID="s26"><Data ss:Type="String">'+Rtrim(Transform(TRB->VENTRADA ,"@E 99,999,999,999.99"))+'</Data></Cell>'+CENT
 			cXml += '    <Cell ss:StyleID="s25"><Data ss:Type="String">'+Rtrim(Transform(TRB->QSAIDA   ,"@E 99,999,999,999.999"))+'</Data></Cell>'+CENT
 			cXml += '    <Cell ss:StyleID="s26"><Data ss:Type="String">'+Rtrim(Transform(TRB->VSAIDA   ,"@E 999,999,999,999.99"))+'</Data></Cell>'+CENT
-			cXml += '    <Cell ss:StyleID="s25"><Data ss:Type="String">'+Rtrim(Transform(TRB->QSLD1    ,"@E 99,999,999,999.999"))+'</Data></Cell>'+CENT  
+			cXml += '    <Cell ss:StyleID="s25"><Data ss:Type="String">'+Rtrim(Transform(TRB->QSLD1    ,"@E 99,999,999,999.999"))+'</Data></Cell>'+CENT
 			cXml += '    <Cell ss:StyleID="s26"><Data ss:Type="String">'+Rtrim(Transform(TRB->VSLD1    ,"@E 99,999,999,999.99"))+'</Data></Cell>'+CENT
 			cXml += '    <Cell ss:StyleID="s25"><Data ss:Type="String">'+Rtrim(Transform(TRB->QTRANSITO,"@E 99,999,999,999.999"))+'</Data></Cell>'+CENT
 			cXml += '    <Cell ss:StyleID="s23"><Data ss:Type="String">'+Alltrim(TRB->B1_SEGUM)+'</Data></Cell>'+CENT
@@ -513,12 +510,12 @@ If TRB->(!EOF())
 
 			cXml += '    <Cell ss:StyleID="s18"><Data ss:Type="String">'+Alltrim(TRB->B1_CONTA)+'</Data></Cell>'+CENT
 			cXml += '   </Row>'+CENT
-			
+
 			If	ncountq == 380 .or. TRB->(Eof())
 				FWrite(nArq,cXml)
 				cXml := ""
 				ncountq := 0
-			EndIf  
+			EndIf
 
 			TRB->(DbSkip())
 		End
@@ -545,7 +542,20 @@ If TRB->(!EOF())
 	End
 	FWrite(nArq,cXml)
 	FClose(nArq)
-	shellExecute( "Open", cPath + cArq + ".xml", " /k dir", "C:\", 1 )
+
+	// Branch: SmartClient Windows (desktop) ou HTML/WebApp
+	// GetRemoteType() retorna 1=Windows, 2=HTML/WebApp
+	If GetRemoteType() == 1
+		// SmartClient Windows: copia para o client e abre com Excel local
+		cFileCli := "C:\Tmp\" + cArq + ".xls"
+		SmCopy(cPath + cArq + ".xml", cFileCli)
+		shellExecute("Open", cFileCli, " /k dir", "C:\", 1)
+	Else
+		// SmartClient HTML / WebApp: nao ha OLE nem ShellExecute
+		// Exibe caminho do arquivo no server para o usuario acessar
+		MsgInfo("Arquivo gerado no servidor: " + cPath + cArq + ".xls" + CRLF + ;
+		        "Copie o conteudo e abra no Excel/LibreOffice localmente.", "EDFR007")
+	EndIf
 EndIf
 
 Return
@@ -569,16 +579,16 @@ DbSelectArea("SX1")
 DbSetOrder(1)
 
 If !DbSeek("EDFR007   07")
-	
+
 	DbSeek("EDFR007")
-	
+
 	While !Eof() .And. Alltrim(SX1->X1_GRUPO) == "EDFR007"
 		Reclock("SX1",.F.,.F.)
 		DbDelete()
 		MsunLock()
 		DbSkip()
 	End
-	
+
 	For X1:=1 to Len(aSX1)
 		RecLock("SX1",.T.)
 		For Z:=1 To FCount()
@@ -586,7 +596,7 @@ If !DbSeek("EDFR007   07")
 		Next
 		MsunLock()
 	Next
-	
+
 Endif*/
 
 Return
