@@ -3,18 +3,12 @@
 #Include "RwMake.ch"
 #Include "TopConn.ch"
 
-/*
-______________________________________________________________________________
-|_____________________________________________________________________________|
-|Programa  - CNTEDF01    Autor  Fabricio Antunes      Data   30/04/2026   	  |
-|_____________________________________________________________________________|
-|Descricao|Funcao para controle de contratos de algodao                       |
-|         |                                                                   |
-|_________|___________________________________________________________________|
-|Uso      | ED & F                                                            | 
-|_________|___________________________________________________________________|
-|_____________________________________________________________________________|
-*/
+/*/{Protheus.doc} Programa  - CNTEDF01
+Funcao para controle de contratos de algodao 
+
+@author Fabricio Antunes
+@since  30/04/2026
+/*/
 
 User Function CNTEDF01()
 Private oBrowse 	:= FwMBrowse():New()
@@ -121,13 +115,13 @@ Static Function ModelDef()
     'Duplo clique para Gerar' , ;   // [02] C ToolTip do campo
     'ZX5_GERAR' , ;                 // [03] C identificador (ID) do Field
     'C' , ;                         // [04] C Tipo do campo
-    10 , ;                          // [05] N Tamanho do campo (O NUMERO QUE O PROTHEUS ESPERAVA)
+    10 , ;                          // [05] N Tamanho do campo 
     0 , ;                           // [06] N Decimal do campo
     NIL , ;                         // [07] B Code-block de validação do campo
     NIL , ;                         // [08] B Code-block de validação When do campo
     NIL , ;                         // [09] A Lista de valores permitido do campo
     NIL , ;                         // [10] L Indica se o campo tem preenchimento obrigatório
-    { || Iif(ZX5->ZX5_STATUS == "1" .AND. ZX5->ZX5_MOEDA  == '2', "BUDGET", "CADEADO") } ,;               // [11] B Code-block de inicializacao do campo (Icone)
+    { || Iif(AllTrim(ZX5->ZX5_STATUS) == "1" .And. (AllTrim(ZX5->ZX5_MOEDA) == "2" .Or. Upper(AllTrim(ZX5->ZX5_TIPO)) == "PA"), "BUDGET", "CADEADO") } ,;               // [11] B Code-block de inicializacao do campo (Icone)
     NIL , ;                         // [12] L Indica se trata de um campo chave
     NIL , ;                         // [13] L Indica se o campo pode receber valor
     .T. )                           // [14] L Indica se o campo é virtual
@@ -454,13 +448,13 @@ User Function GeraMkZX5(cTitNum, cTitParc, cTitStatus, lFromBrowse)
     If lIsAltera
         cQuery += " WHERE ZX5_FILIAL = '" + xFilial("ZX5") + "' " 
         cQuery += " AND ZX5_CODIGO = '" + ZX3->ZX3_CODIGO + "' "
-        cQuery += " AND ZX5_MOEDA = '2' "
+        cQuery += " AND (ZX5_MOEDA = '2' OR ZX5_TIPO = 'PA') "
     Else
         cQuery += " WHERE ZX5_FILIAL >= '" + cFilde   + "' AND ZX5_FILIAL <= '" + cFilAte  + "' "
         cQuery += " AND ZX5_FORNEC >= '" + cFornDe  + "' AND ZX5_FORNEC <= '" + cFornAte  + "' "
         cQuery += " AND ZX5_LOJA   >= '" + cLojde   + "' AND ZX5_LOJA   <= '" + cLojAte  + "' "
         cQuery += " AND ZX5_CODIGO >= '" + cContrDe + "' AND ZX5_CODIGO <= '" + cContrAte + "' "
-        cQuery += " AND ZX5_MOEDA = '2' "
+        cQuery += " AND (ZX5_MOEDA = '2' OR ZX5_TIPO = 'PA') "
 
         cQuery += " AND ZX5_VENCTO >= '" + DtoS(dVenctoDe) + "' AND ZX5_VENCTO <= '" + DtoS(dVenctoAte) + "' "     
                          
@@ -569,8 +563,11 @@ Static Function ExecMarca(cAliasTRB, cMarca)
 
     Local dDataD1   := dDataBase - 1 
     Local nTxDolar  := 0
-    
-    // Variáveis para o ParamBox do PA
+    Local lTemDolar := .F.
+
+    Local cQrySaldo := ""
+    Local cAlsSaldo := GetNextAlias()
+
     Local aParamPA  := {}
     Local cBanco    := Space(TamSx3("E2_FORBCO")[1])
     Local cAgencia  := Space(TamSx3("E2_FORAGE")[1])
@@ -579,6 +576,12 @@ Static Function ExecMarca(cAliasTRB, cMarca)
     (cAliasTRB)->(DbGoTop())
     While !(cAliasTRB)->(Eof())
         If (cAliasTRB)->OK <> " " 
+            DbSelectArea("ZX5")
+            ZX5->(DbGoTo((cAliasTRB)->REC_ZX5))
+            If ZX5->ZX5_MOEDA == '2'
+                lTemDolar := .T.
+            EndIf
+            
             nGerados++
         EndIf
         (cAliasTRB)->(DbSkip())
@@ -589,34 +592,35 @@ Static Function ExecMarca(cAliasTRB, cMarca)
         Return .F.
     EndIf
     
-    DbSelectArea("SM2")
-    SM2->(DbSetOrder(1)) 
-    SM2->(DbSeek(DtoS(dDataD1), .T.))
-    
-    If SM2->(Eof()) .Or. SM2->M2_DATA > dDataD1
-        SM2->(DbSkip(-1))
-    EndIf
-    
-    If !SM2->(Bof()) .And. !Empty(SM2->M2_DATA)
-        nTxDolar := SM2->M2_MOEDA2
-    EndIf
+    If lTemDolar
+        DbSelectArea("SM2")
+        SM2->(DbSetOrder(1)) 
+        SM2->(DbSeek(DtoS(dDataD1), .T.))
+        
+        If SM2->(Eof()) .Or. SM2->M2_DATA > dDataD1
+            SM2->(DbSkip(-1))
+        EndIf
+        
+        If !SM2->(Bof()) .And. !Empty(SM2->M2_DATA)
+            nTxDolar := SM2->M2_MOEDA2
+        EndIf
 
-    aAdd(aParam, {1, "Taxa de conversão do Dolar:", nTxDolar, "@E 999.9999", "Positivo()"    , "", ".T.", 50,  .F.})
-    
-    If ParamBox(aParam, "Conversão de Títulos (Pós-Fixado)",)
+        aAdd(aParam, {1, "Taxa de conversão do Dolar:", nTxDolar, "@E 999.9999", "Positivo()"    , "", ".T.", 50,  .F.})
         
-        nTaxaPtax := MV_PAR01
-        
-        If nTaxaPtax <= 0
-            MsgStop("A taxa do dólar informada deve ser maior que zero!", "Erro")
+        If ParamBox(aParam, "Conversão de Títulos (Pós-Fixado)",)
+            nTaxaPtax := MV_PAR01
+            
+            If nTaxaPtax <= 0
+                MsgStop("A taxa do dólar informada deve ser maior que zero!", "Erro")
+                Return .F.
+            EndIf
+        Else
+            MsgInfo("Geração de títulos cancelada pelo usuário.", "Cancelado")
             Return .F.
         EndIf
-    Else
-        MsgInfo("Geração de títulos cancelada pelo usuário.", "Cancelado")
-        Return .F.
     EndIf
 
-    nGerados := 0 
+    nGerados := 0
 
     (cAliasTRB)->(DbGoTop())
     While !(cAliasTRB)->(Eof())
@@ -704,6 +708,25 @@ Static Function ExecMarca(cAliasTRB, cMarca)
                     ZX5->ZX5_STATUS := "2" 
                     ZX5->ZX5_PTAX   := nTaxaPtax
                     ZX5->(MsUnlock())
+
+                    If Upper(AllTrim(ZX5->ZX5_TIPO)) == "PA" .And. !Empty(ZX5->ZX5_CODIGO)
+                        cQrySaldo := "SELECT R_E_C_N_O_ AS RECNO_ZX6 FROM " + RetSqlName("ZX6") + " "
+                        cQrySaldo += "WHERE ZX6_CODIGO = '" + ZX5->ZX5_CODIGO + "' "
+                        cQrySaldo += "AND ZX6_FORNEC = '" + ZX5->ZX5_FORNEC + "' AND ZX6_LOJA = '" + ZX5->ZX5_LOJA + "' "
+                        cQrySaldo += "AND D_E_L_E_T_ = ' '"
+                        cQrySaldo := ChangeQuery(cQrySaldo)
+                        
+                        DBUseArea( .T., "TOPCONN", TcGenQry(,,cQrySaldo), cAlsSaldo, .F., .T. )
+                        
+                        If !(cAlsSaldo)->(Eof())
+                            DbSelectArea("ZX6")
+                            ZX6->(DbGoTo((cAlsSaldo)->RECNO_ZX6))
+                            RecLock("ZX6", .F.)
+                            ZX6->ZX6_SLDCES += ZX5->ZX5_VLRTIT // Injeta o crédito no parceiro!
+                            ZX6->(MsUnlock())
+                        EndIf
+                        (cAlsSaldo)->(DbCloseArea())
+                    EndIf
                 EndIf
                 (cAliasTRB)->(DbSkip())
             EndDo
