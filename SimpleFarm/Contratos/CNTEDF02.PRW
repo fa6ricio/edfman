@@ -384,6 +384,11 @@ User Function gravaDados(oJsonReq)
                                                 
                                                 ZX5->ZX5_VLRTIT := nValorAtu
                                                 ZX5->ZX5_SALDO  := nValorAtu 
+
+                                                cFil    :=PadR(oItemReq['FILIAL_TITULO'], TamSx3("ZX5_FILIAL")[1])
+                                                cContr  :=upper(oItemReq['NUMERO_CONTRATO'])
+                                                ZX5->ZX5_PA := IIf(U_CNTEDF05(cFil,cContr,cForneceAtu,cLojaAtu) > 0, "S", "N")
+
                                                 
                                                 iif(oItemReq['MOEDA'] != nil, ZX5->ZX5_MOEDA := upper(oItemReq['MOEDA']), nil)
                                                 
@@ -426,6 +431,9 @@ User Function gravaDados(oJsonReq)
                                         ZX5->ZX5_FORTIT := cForneceAtu
                                         ZX5->ZX5_LJTIT  := cLojaAtu
                                         ZX5->ZX5_FORNOM := cNomForAtu
+                                        cFil    :=PadR(oItemReq['FILIAL_TITULO'], TamSx3("ZX5_FILIAL")[1])
+                                        cContr  :=upper(oItemReq['NUMERO_CONTRATO'])
+                                        ZX5->ZX5_PA     := IIf(U_CNTEDF05(cFil,cContr,cForneceAtu,cLojaAtu) > 0, "S", "N")
 
                                         iif(oItemReq['DATA_EMISSAO']    != nil, ZX5->ZX5_EMISSA := sToD(oItemReq['DATA_EMISSAO'])   , nil)
                                         iif(oItemReq['DATA_VENCIMENTO'] != nil, ZX5->ZX5_VENCTO := sToD(oItemReq['DATA_VENCIMENTO']), nil)
@@ -502,6 +510,8 @@ Static Function TrataLog(aLog)
     EndIf
     
 Return cErros
+
+
 
 // =========================================================================
 // ALTERAÇÃO (PUT) POR ID_TITULO 
@@ -956,4 +966,12 @@ WSMETHOD GET ConsultarExclusao WSRECEIVE id WSSERVICE ContasPagar
     (cAlias)->(DbCloseArea())
     Self:SetResponse(EncodeUTF8(oJsonRet:ToJson()))
     FreeObj(oJsonRet)
+
+    U_RetSldZX5('123')
 Return lRet
+
+
+
+
+
+

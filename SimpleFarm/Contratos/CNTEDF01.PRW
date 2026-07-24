@@ -126,6 +126,22 @@ Static Function ModelDef()
     NIL , ;                         // [13] L Indica se o campo pode receber valor
     .T. )                           // [14] L Indica se o campo é virtual
 
+    oStruZX5:AddField( ;
+    'Compens PA' , ;                      // [01] C Titulo do campo
+    'Copesacao PA' , ;   // [02] C ToolTip do campo
+    'ZX5_LPA' , ;                 // [03] C identificador (ID) do Field
+    'C' , ;                         // [04] C Tipo do campo
+    10 , ;                          // [05] N Tamanho do campo 
+    0 , ;                           // [06] N Decimal do campo
+    NIL , ;                         // [07] B Code-block de validação do campo
+    NIL , ;                         // [08] B Code-block de validação When do campo
+    NIL , ;                         // [09] A Lista de valores permitido do campo
+    NIL , ;                         // [10] L Indica se o campo tem preenchimento obrigatório
+    { || Iif(AllTrim(ZX5->ZX5_PA) == "N" , "CONTAINR", "AGENDA") } ,;               // [11] B Code-block de inicializacao do campo (Icone)
+    NIL , ;                         // [12] L Indica se trata de um campo chave
+    NIL , ;                         // [13] L Indica se o campo pode receber valor
+    .T. )                           // [14] L Indica se o campo é virtual
+
 
 	oModel := MpFormModel():New('zCNE01', /*Pre-Validacao*/, /*Pos-Validacao*/, {|oModel| U_CNE01Cmt(oModel)}, /*Cancel*/)
 	oModel:AddFields('ID_M_FLD_ZX3', /*cOwner*/, oStruZX3, /*bPreValidacao*/, /*bPosValidacao*/, /*bCarga*/ )
@@ -241,7 +257,25 @@ Static Function ViewDef()
     NIL , ;                         // [17] C   Picture Variavel
     NIL )                           // [18] L   Indica pulo de linha após o campo
 
-    
+    oStruZX5:AddField( ;
+    'ZX5_LPA' , ;                 // [01] C   Nome do Campo
+    "03" , ;                        // [02] C   Ordem
+    'Compens PA' , ;            // [03] C   Titulo do campo
+    'Compensacao com PA' , ;              // [04] C   Descricao do campo
+    {'Se o titulo deve ser compensado com PA'} , ; // [05] A   Array com Help (O ARRAY QUE DEU CONFLITO)
+    'C' , ;                         // [06] C   Tipo do campo
+    '@BMP' , ;                      // [07] C   Picture
+    NIL , ;                         // [08] B   Bloco de Picture Var
+    '' , ;                          // [09] C   Consulta F3
+    .F. , ;                         // [10] L   Indica se o campo é alteravel
+    NIL , ;                         // [11] C   Pasta do campo
+    NIL , ;                         // [12] C   Agrupamento do campo
+    NIL , ;                         // [13] A   Lista de valores permitido do campo (Combo)
+    NIL , ;                         // [14] N   Tamanho maximo da maior opção do combo
+    NIL , ;                         // [15] C   Inicializador de Browse
+    .T. , ;                         // [16] L   Indica se o campo é virtual
+    NIL , ;                         // [17] C   Picture Variavel
+    NIL )                           // [18] L   Indica pulo de linha após o campo
 
 
  	oView:SetModel(oModel)
@@ -286,10 +320,11 @@ Static Function ViewDef()
     oView:SetViewProperty("ID_V_GRD_ZX5", "GRIDDOUBLECLICK", {{|oFormulario, cFieldName, nLineGrid, nLineModel| ;
         Iif(Alltrim(cFieldName) == "ZX5_LEGEND", TT002(),;
         Iif(Alltrim(cFieldName) == "ZX5_TPMOD", TT003(), ;
+        Iif(Alltrim(cFieldName) == "ZX5_LPA", TT004(), ;
         Iif(Alltrim(cFieldName) == "ZX5_GERAR", ;
             U_GeraMkZX5( oFormulario:GetModel('ID_M_GRD_ZX5'):GetValue('ZX5_NUMERO'), ;
                          oFormulario:GetModel('ID_M_GRD_ZX5'):GetValue('ZX5_PARCEL'), ;
-                         oFormulario:GetModel('ID_M_GRD_ZX5'):GetValue('ZX5_STATUS') ), Nil))) }})
+                         oFormulario:GetModel('ID_M_GRD_ZX5'):GetValue('ZX5_STATUS') ), Nil)))) }})
 
 
 	oView:EnableTitleView('ID_V_FLD_ZX3'	, 'Contratos de Compra deAlgodao' )
@@ -335,6 +370,22 @@ oLegend:Activate()
 
 oLegend:View()
 
+
+
+Static Function TT004()
+
+oLegend := FWLegend():New()
+
+oLegend:Add( { || }, 'CONTAINR'   , 'Titudo a ser pago' ) 
+oLegend:Add( { || }, 'AGENDA'    , 'Titulo a ser compensado em PA com 90/10' ) 
+
+
+oLegend:Activate()
+
+oLegend:View()
+
+
+Return()
 
 Return()
 
