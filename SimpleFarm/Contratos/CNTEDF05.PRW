@@ -1,3 +1,9 @@
+/*/{Protheus.doc} Programa  - CNTEDF05
+Fonte para funcoes genericas de Contratos de Compra de Algodão
+
+@author Fabricio Antunes
+@since  30/04/2026
+/*/
 
 /*
     Função com Array Dinâmico, Prevenção Nativa de Crash e Lógica de Cessão de Crédito
@@ -36,3 +42,50 @@ IF cFilial <> "" .AND. cCont <> ""
 EndIF
 
 Return nRet
+
+
+/*
+===============================================================================================================================
+Programa----------: PrintJson
+Autor-------------: Fabricio Antunes Fonseca
+Data da Criacao---: 07/07/2017
+===============================================================================================================================
+Descrição---------: Funcao com recursividade para impressao do objeto jSon
+===============================================================================================================================
+Uso---------------: Sigaloja, frontloja, TotvsPDV
+===============================================================================================================================
+*/
+User Function PrintJson(jsonObj)
+  local i, j
+  local names
+  local lenJson
+  local item
+ 
+  lenJson := len(jsonObj)
+ 
+  If lenJson > 0
+    For i := 1 to lenJson
+      u_PrintJson(jsonObj[i])
+    Next
+  Else
+    names := jsonObj:GetNames()
+    For i := 1 to len(names)
+      conout("Label - " + names[i])
+      item := jsonObj[names[i]]
+      If ValType(item) == "C"
+        conout( names[i] + " = " + cvaltochar(jsonObj[names[i]]))
+      Else
+        If ValType(item) == "A"
+          conout("Vetor[")
+          For j := 1 to len(item)
+            conout("Indice " + cValtochar(j))
+            u_PrintJson(item[j])
+          Next j
+          conout("]Vetor")
+        EndIf
+      EndIf
+    Next i
+  Endif
+
+Return
+ 
